@@ -1,5 +1,7 @@
 # Инструкция по развёртыванию сервиса совместных закупок
 
+> **Примечание:** Для подробного технического задания на настройку сервера см. [SERVER-SETUP-TZ.md](./SERVER-SETUP-TZ.md)
+
 ## Требования к серверу
 
 ### Минимальные системные требования
@@ -19,8 +21,8 @@
 ### 1.1 Клонирование репозитория
 
 ```bash
-git clone https://github.com/MixaByk1996/mattermost.git
-cd mattermost/groupbuy-bot
+git clone https://github.com/MixaByk1996/groupbuy-bot.git
+cd groupbuy-bot
 ```
 
 ### 1.2 Настройка переменных окружения
@@ -107,8 +109,8 @@ docker-compose logs bot
 
 ```bash
 # Клонирование
-git clone https://github.com/MixaByk1996/mattermost.git
-cd mattermost/groupbuy-bot
+git clone https://github.com/MixaByk1996/groupbuy-bot.git
+cd groupbuy-bot
 
 # Настройка окружения
 cp .env.example .env
@@ -124,8 +126,8 @@ docker-compose -f docker-compose.two-server.yml up -d \
 
 ```bash
 # Клонирование
-git clone https://github.com/MixaByk1996/mattermost.git
-cd mattermost/groupbuy-bot
+git clone https://github.com/MixaByk1996/groupbuy-bot.git
+cd groupbuy-bot
 
 # Настройка окружения
 cp .env.example .env
@@ -149,10 +151,12 @@ sudo apt install certbot
 sudo certbot certonly --standalone -d your-domain.com
 
 # Копирование сертификатов
+sudo mkdir -p infrastructure/nginx/ssl/
 sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem \
-  groupbuy-bot/infrastructure/nginx/ssl/
+  infrastructure/nginx/ssl/
 sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem \
-  groupbuy-bot/infrastructure/nginx/ssl/
+  infrastructure/nginx/ssl/
+sudo chmod 600 infrastructure/nginx/ssl/privkey.pem
 
 # Перезапуск nginx
 docker-compose -f docker-compose.two-server.yml restart nginx-api
@@ -210,7 +214,7 @@ cargo run
 ## 6. Обновление сервиса
 
 ```bash
-cd mattermost/groupbuy-bot
+cd groupbuy-bot
 
 # Получение обновлений
 git pull
@@ -238,7 +242,7 @@ cat backup_20260201.sql | docker-compose exec -T postgres psql -U postgres group
 ### Автоматическое резервное копирование (cron)
 
 ```bash
-echo "0 2 * * * cd /path/to/mattermost/groupbuy-bot && docker-compose exec -T postgres pg_dump -U postgres groupbuy | gzip > /backups/groupbuy_\$(date +\%Y\%m\%d).sql.gz" | crontab -
+echo "0 2 * * * cd /opt/groupbuy && docker-compose exec -T postgres pg_dump -U postgres groupbuy | gzip > /backups/groupbuy_\$(date +\%Y\%m\%d).sql.gz" | crontab -
 ```
 
 ## 8. Мониторинг
