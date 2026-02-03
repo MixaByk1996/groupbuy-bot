@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy dependency files first for caching
-COPY Cargo.toml Cargo.lock* ./
+COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release 2>/dev/null || true
 RUN rm -rf src
 
 # Copy full source
 COPY . .
-RUN cargo build --release || true
+# Touch main.rs to ensure it's rebuilt (cached dummy may have newer timestamp)
+RUN touch src/main.rs
+RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
