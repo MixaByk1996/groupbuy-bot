@@ -2,10 +2,14 @@
  * SearchFilters Component
  * Reusable search and filter controls for admin tables
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function SearchFilters({ filters, values, onChange, onSearch }) {
   const [searchText, setSearchText] = useState(values.search || '');
+
+  useEffect(() => {
+    setSearchText(values.search || '');
+  }, [values.search]);
 
   const handleSearch = (e) => {
     e.preventDefault();

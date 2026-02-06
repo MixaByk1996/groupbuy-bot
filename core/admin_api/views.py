@@ -8,6 +8,8 @@ from decimal import Decimal
 
 from django.db.models import Count, Sum, Q
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User as DjangoUser
 
@@ -38,6 +40,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class AdminAuthView(APIView):
     """Admin authentication endpoints."""
     permission_classes = [AllowAny]
@@ -481,19 +484,21 @@ class AdminPaymentViewSet(viewsets.ReadOnlyModelViewSet):
             total_amount=Sum('amount')
         )
 
-        by_status = dict(
-            queryset.values_list('status').annotate(
+        by_status = {
+            row['status']: {'count': row['count'], 'total': row['total']}
+            for row in queryset.values('status').annotate(
                 count=Count('id'),
                 total=Sum('amount')
-            ).values_list('status', 'count', 'total')
-        )
+            )
+        }
 
-        by_type = dict(
-            queryset.values_list('payment_type').annotate(
+        by_type = {
+            row['payment_type']: {'count': row['count'], 'total': row['total']}
+            for row in queryset.values('payment_type').annotate(
                 count=Count('id'),
                 total=Sum('amount')
-            ).values_list('payment_type', 'count', 'total')
-        )
+            )
+        }
 
         return Response({
             'total_count': total['count'],

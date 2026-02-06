@@ -86,7 +86,7 @@ export default function PaymentsPage() {
     {
       key: 'amount',
       label: 'Сумма',
-      render: (amount) => `${parseFloat(amount).toLocaleString('ru-RU')} ₽`,
+      render: (amount) => `${parseFloat(amount || 0).toLocaleString('ru-RU')} ₽`,
     },
     {
       key: 'status',
@@ -147,7 +147,7 @@ export default function PaymentsPage() {
       key: 'amount',
       label: 'Сумма',
       render: (amount) => {
-        const value = parseFloat(amount);
+        const value = parseFloat(amount || 0);
         const color = value >= 0 ? 'admin-text-success' : 'admin-text-danger';
         return (
           <span className={color}>
@@ -159,7 +159,7 @@ export default function PaymentsPage() {
     {
       key: 'balance_after',
       label: 'Баланс после',
-      render: (balance) => `${parseFloat(balance).toLocaleString('ru-RU')} ₽`,
+      render: (balance) => `${parseFloat(balance || 0).toLocaleString('ru-RU')} ₽`,
     },
     {
       key: 'description',
@@ -286,7 +286,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="admin-detail-item">
                     <label>Сумма</label>
-                    <span>{parseFloat(detailModal.amount).toLocaleString('ru-RU')} ₽</span>
+                    <span>{parseFloat(detailModal.amount || 0).toLocaleString('ru-RU')} ₽</span>
                   </div>
                   <div className="admin-detail-item">
                     <label>Статус</label>

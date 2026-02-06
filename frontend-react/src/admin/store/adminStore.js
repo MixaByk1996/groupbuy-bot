@@ -5,10 +5,13 @@
 import { create } from 'zustand';
 import { adminApi } from '../services/adminApi';
 
+let toastIdCounter = 0;
+
 export const useAdminStore = create((set, get) => ({
   // Auth state
   adminUser: null,
   isAuthenticated: false,
+  loadingCount: 0,
   isLoading: false,
   error: null,
 
@@ -35,27 +38,42 @@ export const useAdminStore = create((set, get) => ({
   // Toast state
   toasts: [],
 
+  // Helper to increment/decrement loading counter
+  startLoading: () => set((state) => {
+    const newCount = state.loadingCount + 1;
+    return { loadingCount: newCount, isLoading: newCount > 0 };
+  }),
+  stopLoading: () => set((state) => {
+    const newCount = Math.max(0, state.loadingCount - 1);
+    return { loadingCount: newCount, isLoading: newCount > 0 };
+  }),
+
   // Actions - Auth
   checkAuth: async () => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const user = await adminApi.checkAuth();
-      set({ adminUser: user, isAuthenticated: true, isLoading: false });
+      set({ adminUser: user, isAuthenticated: true });
+      get().stopLoading();
       return true;
     } catch (error) {
-      set({ adminUser: null, isAuthenticated: false, isLoading: false });
+      set({ adminUser: null, isAuthenticated: false });
+      get().stopLoading();
       return false;
     }
   },
 
   login: async (username, password) => {
-    set({ isLoading: true, error: null });
+    get().startLoading();
+    set({ error: null });
     try {
       const user = await adminApi.login(username, password);
-      set({ adminUser: user, isAuthenticated: true, isLoading: false });
+      set({ adminUser: user, isAuthenticated: true });
+      get().stopLoading();
       return true;
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
+      get().stopLoading();
       get().addToast(error.message, 'error');
       return false;
     }
@@ -72,19 +90,21 @@ export const useAdminStore = create((set, get) => ({
 
   // Actions - Dashboard
   loadDashboardStats: async () => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const stats = await adminApi.getDashboardStats();
-      set({ dashboardStats: stats, isLoading: false });
+      set({ dashboardStats: stats });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки статистики', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   // Actions - Users
   loadUsers: async (params = {}) => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getUsers(params);
       set({
@@ -97,18 +117,18 @@ export const useAdminStore = create((set, get) => ({
             previous: response.previous,
           },
         },
-        isLoading: false,
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки пользователей', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   toggleUserActive: async (userId) => {
     try {
       await adminApi.toggleUserActive(userId);
-      // Refresh users list
       const users = get().users.map((u) =>
         u.id === userId ? { ...u, is_active: !u.is_active } : u
       );
@@ -149,7 +169,7 @@ export const useAdminStore = create((set, get) => ({
 
   // Actions - Procurements
   loadProcurements: async (params = {}) => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getProcurements(params);
       set({
@@ -162,11 +182,12 @@ export const useAdminStore = create((set, get) => ({
             previous: response.previous,
           },
         },
-        isLoading: false,
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки закупок', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
@@ -198,7 +219,7 @@ export const useAdminStore = create((set, get) => ({
 
   // Actions - Payments
   loadPayments: async (params = {}) => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getPayments(params);
       set({
@@ -211,17 +232,18 @@ export const useAdminStore = create((set, get) => ({
             previous: response.previous,
           },
         },
-        isLoading: false,
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки платежей', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   // Actions - Transactions
   loadTransactions: async (params = {}) => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getTransactions(params);
       set({
@@ -234,29 +256,32 @@ export const useAdminStore = create((set, get) => ({
             previous: response.previous,
           },
         },
-        isLoading: false,
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки транзакций', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   // Actions - Categories
   loadCategories: async () => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getCategories();
-      set({ categories: response.results || response, isLoading: false });
+      set({ categories: response.results || response });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки категорий', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   // Actions - Messages
   loadMessages: async (params = {}) => {
-    set({ isLoading: true });
+    get().startLoading();
     try {
       const response = await adminApi.getMessages(params);
       set({
@@ -269,17 +294,18 @@ export const useAdminStore = create((set, get) => ({
             previous: response.previous,
           },
         },
-        isLoading: false,
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       get().addToast('Ошибка загрузки сообщений', 'error');
+    } finally {
+      get().stopLoading();
     }
   },
 
   // Actions - Toast
   addToast: (message, type = 'info') => {
-    const id = Date.now();
+    const id = ++toastIdCounter;
     const toast = { id, message, type };
     set({ toasts: [...get().toasts, toast] });
     setTimeout(() => {

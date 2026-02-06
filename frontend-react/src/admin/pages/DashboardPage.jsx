@@ -6,6 +6,20 @@ import { useAdminStore } from '../store/adminStore';
 import AdminLayout from '../components/AdminLayout';
 import StatCard from '../components/StatCard';
 
+const formatNumber = (num) => {
+  if (num === undefined || num === null) return '0';
+  return new Intl.NumberFormat('ru-RU').format(num);
+};
+
+const formatCurrency = (num) => {
+  if (num === undefined || num === null) return '0 ₽';
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 0,
+  }).format(num);
+};
+
 export default function DashboardPage() {
   const { dashboardStats, loadDashboardStats, isLoading } = useAdminStore();
 
@@ -22,20 +36,6 @@ export default function DashboardPage() {
   }
 
   const stats = dashboardStats || {};
-
-  const formatNumber = (num) => {
-    if (num === undefined || num === null) return '0';
-    return new Intl.NumberFormat('ru-RU').format(num);
-  };
-
-  const formatCurrency = (num) => {
-    if (num === undefined || num === null) return '0 ₽';
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      minimumFractionDigits: 0,
-    }).format(num);
-  };
 
   return (
     <AdminLayout>

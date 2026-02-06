@@ -98,6 +98,9 @@
   font-size: 0.75rem;
   font-weight: 500;
   background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-sidebar .admin-badge {
   margin-left: 0.5rem;
 }
 

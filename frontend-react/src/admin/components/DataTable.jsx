@@ -35,7 +35,7 @@ export default function DataTable({
     }
   };
 
-  const allSelected = data.length > 0 && selectedIds.length === data.length;
+  const allSelected = data.length > 0 && data.every((item) => selectedIds.includes(item.id));
 
   return (
     <div className="admin-table-wrapper">

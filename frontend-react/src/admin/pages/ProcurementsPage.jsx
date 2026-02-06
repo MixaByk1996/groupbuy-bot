@@ -110,8 +110,8 @@ export default function ProcurementsPage() {
             />
           </div>
           <span className="admin-progress-text">
-            {parseFloat(procurement.current_amount).toLocaleString('ru-RU')} /
-            {parseFloat(procurement.target_amount).toLocaleString('ru-RU')} ₽
+            {parseFloat(procurement.current_amount || 0).toLocaleString('ru-RU')} /
+            {parseFloat(procurement.target_amount || 0).toLocaleString('ru-RU')} ₽
           </span>
         </div>
       ),
@@ -125,6 +125,7 @@ export default function ProcurementsPage() {
       key: 'deadline',
       label: 'Дедлайн',
       render: (deadline) => {
+        if (!deadline) return '-';
         const date = new Date(deadline);
         const isExpired = date < new Date();
         return (
@@ -236,15 +237,15 @@ export default function ProcurementsPage() {
                   </div>
                   <div className="admin-detail-item">
                     <label>Дедлайн</label>
-                    <span>{new Date(detailModal.deadline).toLocaleString('ru-RU')}</span>
+                    <span>{detailModal.deadline ? new Date(detailModal.deadline).toLocaleString('ru-RU') : '-'}</span>
                   </div>
                   <div className="admin-detail-item">
                     <label>Целевая сумма</label>
-                    <span>{parseFloat(detailModal.target_amount).toLocaleString('ru-RU')} ₽</span>
+                    <span>{parseFloat(detailModal.target_amount || 0).toLocaleString('ru-RU')} ₽</span>
                   </div>
                   <div className="admin-detail-item">
                     <label>Текущая сумма</label>
-                    <span>{parseFloat(detailModal.current_amount).toLocaleString('ru-RU')} ₽</span>
+                    <span>{parseFloat(detailModal.current_amount || 0).toLocaleString('ru-RU')} ₽</span>
                   </div>
                   <div className="admin-detail-item">
                     <label>Участников</label>

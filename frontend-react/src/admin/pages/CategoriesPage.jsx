@@ -62,7 +62,7 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (category) => {
-    if (!confirm(`Удалить категорию "${category.name}"?`)) return;
+    if (!window.confirm(`Удалить категорию "${category.name}"?`)) return;
     try {
       await adminApi.deleteCategory(category.id);
       addToast('Категория удалена', 'success');

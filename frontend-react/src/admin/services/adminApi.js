@@ -5,12 +5,30 @@
 
 const API_URL = '/api/admin';
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function buildQuery(params) {
+  const filtered = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  );
+  return new URLSearchParams(filtered).toString();
+}
+
 async function request(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // Django requires CSRF token for state-changing requests
+  if (method !== 'GET' && method !== 'HEAD') {
+    headers['X-CSRFToken'] = getCsrfToken();
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -50,7 +68,7 @@ export const adminApi = {
 
   // Users
   getUsers: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/users/?${query}`);
   },
   getUser: (id) => request(`/users/${id}/`),
@@ -80,7 +98,7 @@ export const adminApi = {
 
   // Procurements
   getProcurements: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/procurements/?${query}`);
   },
   getProcurement: (id) => request(`/procurements/${id}/`),
@@ -109,7 +127,7 @@ export const adminApi = {
 
   // Payments
   getPayments: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/payments/?${query}`);
   },
   getPayment: (id) => request(`/payments/${id}/`),
@@ -117,7 +135,7 @@ export const adminApi = {
 
   // Transactions
   getTransactions: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/transactions/?${query}`);
   },
 
@@ -140,7 +158,7 @@ export const adminApi = {
 
   // Messages
   getMessages: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/messages/?${query}`);
   },
   toggleMessageDelete: (id) =>
@@ -148,7 +166,7 @@ export const adminApi = {
 
   // Notifications
   getNotifications: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query = buildQuery(params);
     return request(`/notifications/?${query}`);
   },
   sendBulkNotification: (userIds, notificationType, title, message) =>

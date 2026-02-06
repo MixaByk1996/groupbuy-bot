@@ -16,7 +16,6 @@ export default function UsersPage() {
     toggleUserVerified,
     updateUserBalance,
     isLoading,
-    addToast,
   } = useAdminStore();
 
   const [filters, setFilters] = useState({
@@ -101,7 +100,7 @@ export default function UsersPage() {
     {
       key: 'balance',
       label: 'Баланс',
-      render: (balance) => `${parseFloat(balance).toLocaleString('ru-RU')} ₽`,
+      render: (balance) => `${parseFloat(balance || 0).toLocaleString('ru-RU')} ₽`,
     },
     {
       key: 'is_active',
@@ -237,7 +236,7 @@ export default function UsersPage() {
                 <p>
                   Пользователь: <strong>{balanceModal.first_name} {balanceModal.last_name}</strong>
                   <br />
-                  Текущий баланс: <strong>{parseFloat(balanceModal.balance).toLocaleString('ru-RU')} ₽</strong>
+                  Текущий баланс: <strong>{parseFloat(balanceModal.balance || 0).toLocaleString('ru-RU')} ₽</strong>
                 </p>
                 <form onSubmit={handleBalanceSubmit}>
                   <div className="admin-form-group">
