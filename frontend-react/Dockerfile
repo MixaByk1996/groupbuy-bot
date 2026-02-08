@@ -4,15 +4,15 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy source code
+# Copy source code (includes pre-built WASM package in src/wasm-pkg/)
 COPY . .
 
-# Build the application
+# Build the application with WASM support
 RUN npm run build
 
 # Production stage

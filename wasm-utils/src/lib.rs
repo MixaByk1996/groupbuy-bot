@@ -731,3 +731,220 @@ pub fn benchmark_batch_processing(count: i32) -> f64 {
     let end = js_sys::Date::now();
     end - start
 }
+
+// ──────────────────────────────────────────────
+// Unit tests (run with `cargo test`)
+// ──────────────────────────────────────────────
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Validation tests ──
+
+    #[test]
+    fn test_validate_phone_valid() {
+        assert!(validate_phone("+79991234567"));
+        assert!(validate_phone("+7 999 123 4567"));
+        assert!(validate_phone("")); // empty is valid (optional)
+    }
+
+    #[test]
+    fn test_validate_phone_invalid() {
+        assert!(!validate_phone("123")); // too short, no +
+        assert!(!validate_phone("+123")); // too short even with +
+    }
+
+    #[test]
+    fn test_validate_email_valid() {
+        assert!(validate_email("user@example.com"));
+        assert!(validate_email("test@mail.ru"));
+        assert!(validate_email("")); // empty is valid (optional)
+    }
+
+    #[test]
+    fn test_validate_email_invalid() {
+        assert!(!validate_email("notanemail"));
+        assert!(!validate_email("@domain.com"));
+        assert!(!validate_email("user@"));
+    }
+
+    // ── Formatting tests ──
+
+    #[test]
+    fn test_calculate_progress() {
+        assert_eq!(calculate_progress(500.0, 1000.0), 50);
+        assert_eq!(calculate_progress(0.0, 1000.0), 0);
+        assert_eq!(calculate_progress(1500.0, 1000.0), 100); // capped at 100
+        assert_eq!(calculate_progress(100.0, 0.0), 0); // division by zero guard
+    }
+
+    #[test]
+    fn test_format_currency() {
+        assert_eq!(format_currency(1000.0), "1 000 ₽");
+        assert_eq!(format_currency(0.0), "0 ₽");
+        assert_eq!(format_currency(1234567.89), "1 234 567,89 ₽");
+        assert_eq!(format_currency(99.5), "99,50 ₽");
+    }
+
+    #[test]
+    fn test_get_avatar_color() {
+        let color = get_avatar_color("Тест");
+        assert!(color.starts_with('#'));
+        assert_eq!(color.len(), 7); // #RRGGBB format
+
+        // Same name should always produce same color
+        assert_eq!(get_avatar_color("Иван"), get_avatar_color("Иван"));
+    }
+
+    #[test]
+    fn test_get_initials() {
+        assert_eq!(get_initials("Иван", "Петров"), "ИП");
+        assert_eq!(get_initials("Anna", ""), "A");
+        assert_eq!(get_initials("", ""), "?");
+    }
+
+    #[test]
+    fn test_escape_html() {
+        assert_eq!(escape_html("<script>alert('xss')</script>"),
+            "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;");
+        assert_eq!(escape_html("Hello & World"), "Hello &amp; World");
+        assert_eq!(escape_html("\"quoted\""), "&quot;quoted&quot;");
+        assert_eq!(escape_html("normal text"), "normal text");
+    }
+
+    #[test]
+    fn test_format_message_text_basic() {
+        assert_eq!(format_message_text(""), "");
+        assert_eq!(format_message_text("Hello"), "Hello");
+    }
+
+    #[test]
+    fn test_format_message_text_xss() {
+        let result = format_message_text("<script>alert(1)</script>");
+        assert!(!result.contains("<script>"));
+        assert!(result.contains("&lt;script&gt;"));
+    }
+
+    #[test]
+    fn test_format_message_text_urls() {
+        let result = format_message_text("Visit https://example.com please");
+        assert!(result.contains("<a href=\"https://example.com\""));
+        assert!(result.contains("target=\"_blank\""));
+    }
+
+    #[test]
+    fn test_format_message_text_newlines() {
+        let result = format_message_text("Line 1\nLine 2");
+        assert!(result.contains("<br>"));
+    }
+
+    // ── Search and sorting tests ──
+
+    #[test]
+    fn test_search_procurements() {
+        let json = serde_json::json!([
+            {"id": 1, "title": "Мед натуральный", "description": "Свежий мед", "city": "Москва"},
+            {"id": 2, "title": "Масло оливковое", "description": "Из Греции", "city": "Санкт-Петербург"},
+            {"id": 3, "title": "Чай зеленый", "description": "Японский чай", "city": "Москва"},
+        ]).to_string();
+
+        let result = search_procurements(&json, "Москва");
+        let parsed: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert_eq!(parsed.len(), 2); // two procurements in Moscow
+
+        let result_empty = search_procurements(&json, "");
+        assert_eq!(result_empty, "[]");
+
+        let result_none = search_procurements(&json, "Несуществующий");
+        let parsed_none: Vec<serde_json::Value> = serde_json::from_str(&result_none).unwrap();
+        assert_eq!(parsed_none.len(), 0);
+    }
+
+    #[test]
+    fn test_sort_procurements() {
+        let json = serde_json::json!([
+            {"id": 1, "title": "Банан", "current_amount": 300.0},
+            {"id": 2, "title": "Апельсин", "current_amount": 100.0},
+            {"id": 3, "title": "Вишня", "current_amount": 200.0},
+        ]).to_string();
+
+        // Sort by title ascending
+        let sorted = sort_procurements(&json, "title", "asc");
+        let ids: Vec<i64> = serde_json::from_str(&sorted).unwrap();
+        assert_eq!(ids, vec![2, 1, 3]); // Апельсин, Банан, Вишня
+
+        // Sort by amount descending
+        let sorted_desc = sort_procurements(&json, "amount", "desc");
+        let ids_desc: Vec<i64> = serde_json::from_str(&sorted_desc).unwrap();
+        assert_eq!(ids_desc, vec![1, 3, 2]); // 300, 200, 100
+    }
+
+    #[test]
+    fn test_aggregate_procurement_stats() {
+        let json = serde_json::json!([
+            {"id": 1, "title": "A", "status": "active", "current_amount": 500.0, "target_amount": 1000.0, "city": "Москва", "participant_count": 5},
+            {"id": 2, "title": "B", "status": "active", "current_amount": 300.0, "target_amount": 800.0, "city": "СПб", "participant_count": 3},
+            {"id": 3, "title": "C", "status": "completed", "current_amount": 1000.0, "target_amount": 1000.0, "city": "Москва", "participant_count": 10},
+        ]).to_string();
+
+        let result = aggregate_procurement_stats(&json);
+        let stats: serde_json::Value = serde_json::from_str(&result).unwrap();
+
+        assert_eq!(stats["total_count"], 3);
+        assert_eq!(stats["active_count"], 2);
+        assert_eq!(stats["total_amount"], 1800.0);
+        assert_eq!(stats["total_target"], 2800.0);
+        assert_eq!(stats["cities"].as_array().unwrap().len(), 2); // Москва, СПб
+    }
+
+    #[test]
+    fn test_search_messages() {
+        let json = serde_json::json!([
+            {"id": 1, "text": "Привет всем!"},
+            {"id": 2, "text": "Когда доставка?"},
+            {"id": 3, "text": "Привет! Доставка завтра"},
+        ]).to_string();
+
+        let result = search_messages(&json, "привет");
+        let parsed: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert_eq!(parsed.len(), 2); // messages 1 and 3
+
+        let result_delivery = search_messages(&json, "доставка");
+        let parsed_delivery: Vec<serde_json::Value> = serde_json::from_str(&result_delivery).unwrap();
+        assert_eq!(parsed_delivery.len(), 2); // messages 2 and 3
+    }
+
+    // ── Edge case tests ──
+
+    #[test]
+    fn test_empty_json_input() {
+        assert_eq!(search_procurements("[]", "test"), "[]");
+        assert_eq!(sort_procurements("[]", "title", "asc"), "[]");
+        // Empty array returns valid stats object with zero values
+        let stats: serde_json::Value = serde_json::from_str(&aggregate_procurement_stats("[]")).unwrap();
+        assert_eq!(stats["total_count"], 0);
+        assert_eq!(stats["active_count"], 0);
+        assert_eq!(search_messages("[]", "test"), "[]");
+    }
+
+    #[test]
+    fn test_invalid_json_input() {
+        assert_eq!(search_procurements("not json", "test"), "[]");
+        assert_eq!(sort_procurements("{bad}", "title", "asc"), "[]");
+        assert_eq!(aggregate_procurement_stats("invalid"), "{}");
+    }
+
+    #[test]
+    fn test_format_ru_date() {
+        assert_eq!(format_ru_date(15, 0, 2026, 2026), "15 января"); // same year
+        assert_eq!(format_ru_date(1, 11, 2025, 2026), "1 декабря 2025"); // different year
+        assert_eq!(format_ru_date(28, 5, 2026, 2026), "28 июня"); // month index 5 = June
+    }
+
+    #[test]
+    fn test_format_currency_value_internal() {
+        assert_eq!(format_currency_value(0.0), "0 ₽");
+        assert_eq!(format_currency_value(1234.56), "1 234,56 ₽");
+        assert_eq!(format_currency_value(999999.0), "999 999 ₽");
+    }
+}
