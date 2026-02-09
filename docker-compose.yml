@@ -62,7 +62,15 @@ services:
     networks:
       - groupbuy-network
 
-  # React frontend
+  # WASM build (produces WebAssembly package from Rust)
+  wasm-builder:
+    build:
+      context: .
+      dockerfile: wasm-utils/Dockerfile
+    volumes:
+      - wasm_pkg:/wasm-pkg
+
+  # React frontend (with WASM integration)
   frontend-react:
     build: ./frontend-react
     ports:
@@ -110,6 +118,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  wasm_pkg:
 
 networks:
   groupbuy-network:
