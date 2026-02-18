@@ -3,7 +3,6 @@ Telegram Adapter for GroupBuy Bot
 Handles Telegram-specific message routing and formatting
 """
 import asyncio
-import json
 import logging
 import os
 from datetime import datetime

@@ -3,7 +3,6 @@ VK Adapter for GroupBuy Bot
 Handles VK-specific message routing and formatting
 """
 import asyncio
-import json
 import logging
 import os
 from datetime import datetime
