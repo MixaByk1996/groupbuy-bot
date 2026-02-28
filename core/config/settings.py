@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'chat',
     'payments',
     'admin_api',
+    'ml',
 ]
 
 MIDDLEWARE = [
