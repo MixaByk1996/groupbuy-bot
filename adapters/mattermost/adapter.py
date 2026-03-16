@@ -6,11 +6,16 @@ Integration approach:
   - Outgoing Webhooks: Mattermost POSTs to this adapter when users send messages.
   - Incoming Webhooks: This adapter POSTs to Mattermost to send messages back.
   - Slash Commands: Mattermost POSTs slash-command payloads to this adapter.
+  - Interactive Buttons: Mattermost POSTs button-click payloads; adapter forwards
+    action to the bot service and may reply inline.
+  - REST API: When MATTERMOST_BOT_TOKEN is set, the adapter uses the Mattermost
+    REST API to look up user info and send direct messages more reliably.
 
 Environment variables required:
   MATTERMOST_URL        – Base URL of the Mattermost server (e.g. https://mm.example.com)
-  MATTERMOST_TOKEN      – Outgoing-webhook token used to verify requests from Mattermost
+  MATTERMOST_TOKEN      – Outgoing-webhook / slash-command token for request verification
   MATTERMOST_WEBHOOK_URL – Incoming webhook URL used to post messages back to Mattermost
+  MATTERMOST_BOT_TOKEN  – (optional) Bot-user personal-access token for REST API calls
   BOT_SERVICE_URL       – URL of the internal bot service (default: http://bot:8001)
 """
 
@@ -43,6 +48,7 @@ class MattermostAdapter:
         self.mattermost_url: str = os.getenv("MATTERMOST_URL", "").rstrip("/")
         self.token: str = os.getenv("MATTERMOST_TOKEN", "")
         self.webhook_url: str = os.getenv("MATTERMOST_WEBHOOK_URL", "")
+        self.bot_token: str = os.getenv("MATTERMOST_BOT_TOKEN", "")
         self.bot_service_url: str = os.getenv(
             "BOT_SERVICE_URL", "http://bot:8001"
         ).rstrip("/")
@@ -66,6 +72,8 @@ class MattermostAdapter:
     def _register_routes(self) -> None:
         """Register HTTP routes for incoming Mattermost events."""
         self.app.router.add_post("/webhook", self._handle_webhook)
+        self.app.router.add_post("/slash", self._handle_slash)
+        self.app.router.add_post("/mattermost_action", self._handle_action)
         self.app.router.add_get("/health", self._handle_health)
 
     async def _handle_health(self, request: web.Request) -> web.Response:
@@ -74,10 +82,10 @@ class MattermostAdapter:
 
     async def _handle_webhook(self, request: web.Request) -> web.Response:
         """
-        Handle incoming Mattermost outgoing-webhook / slash-command requests.
+        Handle incoming Mattermost outgoing-webhook requests.
 
         Mattermost can send payloads as:
-          - application/x-www-form-urlencoded  (outgoing webhooks, slash commands)
+          - application/x-www-form-urlencoded  (outgoing webhooks)
           - application/json                   (custom integrations)
         """
         content_type = request.content_type or ""
@@ -89,13 +97,15 @@ class MattermostAdapter:
                 form = await request.post()
                 data = dict(form)
         except Exception as exc:
-            logger.error("Failed to parse Mattermost request: %s", exc)
+            logger.error("Failed to parse Mattermost webhook request: %s", exc)
             return web.Response(status=400, text="Bad Request")
 
         # Verify the shared token so we only process genuine Mattermost events
         incoming_token = data.get("token", "")
         if incoming_token != self.token:
-            logger.warning("Token mismatch – ignoring request (got %r)", incoming_token)
+            logger.warning(
+                "Webhook token mismatch – ignoring request (got %r)", incoming_token
+            )
             return web.Response(status=403, text="Forbidden")
 
         # Normalise and enqueue
@@ -105,6 +115,59 @@ class MattermostAdapter:
         # Return an empty 200 so Mattermost doesn't display an error to the user.
         # Actual bot replies are sent asynchronously via the incoming webhook.
         return web.Response(status=200)
+
+    async def _handle_slash(self, request: web.Request) -> web.Response:
+        """
+        Handle Mattermost slash-command requests.
+
+        Slash-command payloads are always application/x-www-form-urlencoded and
+        include a ``command`` field (e.g. ``/groupbuy``) and a ``text`` field with
+        the arguments supplied by the user.  The adapter converts the payload to
+        the standardised format and returns an immediate acknowledgement so
+        Mattermost doesn't time out while the bot processes the command.
+        """
+        try:
+            form = await request.post()
+            data = dict(form)
+        except Exception as exc:
+            logger.error("Failed to parse Mattermost slash request: %s", exc)
+            return web.Response(status=400, text="Bad Request")
+
+        incoming_token = data.get("token", "")
+        if incoming_token != self.token:
+            logger.warning(
+                "Slash token mismatch – ignoring request (got %r)", incoming_token
+            )
+            return web.Response(status=403, text="Forbidden")
+
+        standardized = self._standardize_slash(data)
+        await self.message_queue.put(standardized)
+
+        # Immediate ephemeral acknowledgement visible only to the caller
+        return web.json_response(
+            {"response_type": "ephemeral", "text": "Processing your request…"}
+        )
+
+    async def _handle_action(self, request: web.Request) -> web.Response:
+        """
+        Handle Mattermost interactive-button (integration action) requests.
+
+        When a user clicks a button rendered as a Mattermost attachment action,
+        Mattermost POSTs a JSON payload to the URL configured in the action's
+        ``integration.url`` field.  This handler decodes that payload, converts
+        it to the standardised callback format, and enqueues it for processing.
+        """
+        try:
+            data = await request.json()
+        except Exception as exc:
+            logger.error("Failed to parse Mattermost action request: %s", exc)
+            return web.Response(status=400, text="Bad Request")
+
+        standardized = self._standardize_action(data)
+        await self.message_queue.put(standardized)
+
+        # Respond with an updated message to acknowledge the button click
+        return web.json_response({"update": {"props": {}}})
 
     # ------------------------------------------------------------------
     # Message standardisation
@@ -142,6 +205,155 @@ class MattermostAdapter:
             "type": "message",
         }
 
+    def _standardize_slash(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Convert a Mattermost slash-command payload to the standardised format."""
+        user_id = data.get("user_id", "")
+        user_name = data.get("user_name", "")
+        command = data.get("command", "")
+        text = data.get("text", "")
+
+        # Reconstruct the full command text the way other adapters see it
+        full_text = f"{command} {text}".strip() if text else command
+
+        return {
+            "platform": "mattermost",
+            "user_id": user_id,
+            "chat_id": data.get("channel_id", ""),
+            "text": full_text,
+            "message_id": "",
+            "user_info": {
+                "first_name": user_name,
+                "last_name": "",
+                "username": user_name,
+                "language_code": "en",
+                "channel_name": data.get("channel_name", ""),
+                "team_id": data.get("team_id", ""),
+                "team_domain": data.get("team_domain", ""),
+            },
+            "timestamp": datetime.now().isoformat(),
+            "type": "slash_command",
+        }
+
+    def _standardize_action(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Convert a Mattermost interactive-button payload to the standardised format."""
+        # Action payloads arrive as: {"user_id": ..., "user_name": ...,
+        #   "channel_id": ..., "post_id": ..., "context": {"action": ...}}
+        user_id = data.get("user_id", "")
+        user_name = data.get("user_name", "")
+        context = data.get("context", {})
+        callback_data = context.get("action", "")
+
+        return {
+            "platform": "mattermost",
+            "user_id": user_id,
+            "callback_data": callback_data,
+            "message_id": data.get("post_id", ""),
+            "user_info": {
+                "first_name": user_name,
+                "last_name": "",
+                "username": user_name,
+                "language_code": "en",
+                "channel_name": data.get("channel_name", ""),
+                "team_id": data.get("team_id", ""),
+                "team_domain": data.get("team_domain", ""),
+            },
+            "timestamp": datetime.now().isoformat(),
+            "type": "callback",
+        }
+
+    # ------------------------------------------------------------------
+    # REST API helpers
+    # ------------------------------------------------------------------
+    def _rest_headers(self) -> dict[str, str]:
+        """Return HTTP headers for Mattermost REST API requests."""
+        return {
+            "Authorization": f"Bearer {self.bot_token}",
+            "Content-Type": "application/json",
+        }
+
+    async def get_user_info(self, user_id: str) -> Optional[dict[str, Any]]:
+        """
+        Fetch user information from the Mattermost REST API.
+
+        Requires ``MATTERMOST_URL`` and ``MATTERMOST_BOT_TOKEN`` to be set.
+        Returns ``None`` when the REST API is unavailable or the request fails.
+        """
+        if not self.mattermost_url or not self.bot_token:
+            logger.debug(
+                "get_user_info: MATTERMOST_URL or MATTERMOST_BOT_TOKEN not set, skipping"
+            )
+            return None
+
+        url = f"{self.mattermost_url}/api/v4/users/{user_id}"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self._rest_headers()) as response:
+                    if response.status != 200:
+                        body = await response.text()
+                        logger.error(
+                            "get_user_info: REST API returned %d: %s",
+                            response.status,
+                            body,
+                        )
+                        return None
+                    user = await response.json()
+                    return {
+                        "id": user.get("id", ""),
+                        "first_name": user.get("first_name", ""),
+                        "last_name": user.get("last_name", ""),
+                        "username": user.get("username", ""),
+                        "email": user.get("email", ""),
+                        "nickname": user.get("nickname", ""),
+                    }
+        except Exception as exc:
+            logger.error("Error fetching Mattermost user info: %s", exc)
+            return None
+
+    async def _get_direct_channel_id(
+        self, session: aiohttp.ClientSession, user_id: str
+    ) -> Optional[str]:
+        """
+        Create or fetch the direct-message channel between the bot and *user_id*.
+
+        Uses the Mattermost REST API ``POST /api/v4/channels/direct``.
+        Returns ``None`` when the REST API is unavailable.
+        """
+        if not self.mattermost_url or not self.bot_token:
+            return None
+
+        # First, look up the bot's own user ID
+        url_me = f"{self.mattermost_url}/api/v4/users/me"
+        try:
+            async with session.get(url_me, headers=self._rest_headers()) as resp:
+                if resp.status != 200:
+                    return None
+                me = await resp.json()
+                bot_user_id = me.get("id", "")
+        except Exception as exc:
+            logger.error("Error fetching bot user ID: %s", exc)
+            return None
+
+        url_dm = f"{self.mattermost_url}/api/v4/channels/direct"
+        try:
+            async with session.post(
+                url_dm,
+                headers=self._rest_headers(),
+                json=[bot_user_id, user_id],
+            ) as resp:
+                if resp.status not in (200, 201):
+                    body = await resp.text()
+                    logger.error(
+                        "_get_direct_channel_id: REST API returned %d: %s",
+                        resp.status,
+                        body,
+                    )
+                    return None
+                channel = await resp.json()
+                return channel.get("id")
+        except Exception as exc:
+            logger.error("Error creating DM channel: %s", exc)
+            return None
+
     # ------------------------------------------------------------------
     # Sending messages back to Mattermost
     # ------------------------------------------------------------------
@@ -153,11 +365,14 @@ class MattermostAdapter:
         disable_web_page_preview: bool = False,
     ) -> bool:
         """
-        Send a plain-text message to Mattermost via the incoming webhook.
+        Send a plain-text message to a Mattermost user.
 
-        *user_id* is used to address the recipient as a direct-message channel
-        (@username). Pass a channel name prefixed with '#' to post to a channel.
+        Prefers the REST API (when ``MATTERMOST_BOT_TOKEN`` and
+        ``MATTERMOST_URL`` are set) which opens/reuses a proper DM channel.
+        Falls back to the incoming-webhook approach (@username addressing).
         """
+        if self.mattermost_url and self.bot_token:
+            return await self._send_via_rest(user_id, {"message": text})
         return await self._post_to_mattermost({"text": text, "channel": f"@{user_id}"})
 
     async def send_message_with_keyboard(
@@ -173,8 +388,16 @@ class MattermostAdapter:
         The standardised keyboard format uses:
           { "buttons": [ [ {"text": ..., "callback_data": ..., "url": ...} ], … ] }
         Each inner list becomes one row of action buttons.
+
+        Prefers the REST API when ``MATTERMOST_BOT_TOKEN`` is available.
         """
         attachments = self._convert_keyboard_to_attachments(keyboard, text)
+
+        if self.mattermost_url and self.bot_token:
+            return await self._send_via_rest(
+                user_id, {"message": text, "props": {"attachments": attachments}}
+            )
+
         payload: dict[str, Any] = {
             "channel": f"@{user_id}",
             "attachments": attachments,
@@ -216,6 +439,44 @@ class MattermostAdapter:
                 "actions": actions,
             }
         ]
+
+    async def _send_via_rest(self, user_id: str, post_body: dict[str, Any]) -> bool:
+        """
+        Post a message to a user's DM channel via the Mattermost REST API.
+
+        ``post_body`` is merged with ``{"channel_id": <dm_channel_id>}`` before
+        being POSTed to ``POST /api/v4/posts``.
+        """
+        try:
+            async with aiohttp.ClientSession() as session:
+                channel_id = await self._get_direct_channel_id(session, user_id)
+                if not channel_id:
+                    logger.warning(
+                        "_send_via_rest: could not get DM channel for user %s, "
+                        "falling back to incoming webhook",
+                        user_id,
+                    )
+                    return await self._post_to_mattermost(
+                        {**post_body, "channel": f"@{user_id}"}
+                    )
+
+                payload = {**post_body, "channel_id": channel_id}
+                url = f"{self.mattermost_url}/api/v4/posts"
+                async with session.post(
+                    url, headers=self._rest_headers(), json=payload
+                ) as response:
+                    if response.status not in (200, 201):
+                        body = await response.text()
+                        logger.error(
+                            "_send_via_rest: REST API returned %d: %s",
+                            response.status,
+                            body,
+                        )
+                        return False
+                    return True
+        except Exception as exc:
+            logger.error("Error sending message via REST API: %s", exc)
+            return False
 
     async def _post_to_mattermost(self, payload: dict[str, Any]) -> bool:
         """POST a JSON payload to the Mattermost incoming webhook URL."""
