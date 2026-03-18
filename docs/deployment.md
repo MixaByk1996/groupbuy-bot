@@ -157,17 +157,16 @@ cd groupbuy-bot
 cp .env.example .env
 nano .env   # заполните все переменные, включая DOMAIN и CERTBOT_EMAIL
 
-# Запуск скрипта инициализации SSL
-bash scripts/init-letsencrypt.sh
-
-# После успешного получения сертификата — запуск всех сервисов
-docker compose -f docker-compose.prod.yml up -d
+# Запуск единого скрипта настройки (проверяет окружение, получает SSL и запускает сервисы)
+bash scripts/setup-prod.sh
 ```
 
-Скрипт `init-letsencrypt.sh` автоматически:
-1. Запускает временный Nginx для прохождения ACME-проверки Let's Encrypt
-2. Получает SSL-сертификат для вашего домена
-3. Сохраняет сертификаты в `infrastructure/nginx/ssl/`
+Скрипт `setup-prod.sh` автоматически:
+1. Проверяет наличие `.env` и всех обязательных переменных
+2. Обнаруживает устаревший том PostgreSQL (причина ошибки `password authentication failed`) и предлагает его сбросить
+3. Запускает временный Nginx для прохождения ACME-проверки Let's Encrypt
+4. Получает SSL-сертификат для вашего домена
+5. Запускает все сервисы и проверяет доступность API
 
 #### Автоматическое обновление сертификата
 
@@ -395,7 +394,53 @@ docker system prune -f
 
 ## 10. Устранение неполадок
 
-### Бэкенд не стартует (ошибка подключения к БД)
+### Ошибка «password authentication failed for user postgres»
+
+**Симптом:** контейнер `groupbuy-core` завершается с паникой:
+```
+Failed to create database pool: Database(PgDatabaseError { severity: Fatal, code: "28P01",
+message: "password authentication failed for user \"postgres\"" })
+```
+и контейнер `groupbuy-core` помечается как `unhealthy`.
+
+**Причина:** Docker-том `groupbuy_postgres_data` уже существует — он был создан при
+предыдущем запуске с другим значением `DB_PASSWORD`. PostgreSQL **игнорирует**
+переменную `POSTGRES_PASSWORD`, если том уже инициализирован, и продолжает
+использовать старый пароль. Приложение же подключается с новым паролем из `.env` —
+отсюда ошибка аутентификации.
+
+**Решение:**
+
+Используйте скрипт `setup-prod.sh`, который автоматически обнаружит проблему и
+предложит сбросить том:
+
+```bash
+bash scripts/setup-prod.sh
+```
+
+Или, если данные в БД можно удалить (первоначальная установка), передайте флаг:
+
+```bash
+bash scripts/setup-prod.sh --reset-db
+```
+
+Для ручного исправления:
+
+```bash
+# 1. Остановить все контейнеры
+docker compose -f docker-compose.prod.yml down
+
+# 2. Удалить том PostgreSQL (ВСЕ данные БД будут потеряны!)
+docker volume rm groupbuy_postgres_data
+
+# 3. Запустить сервисы заново
+docker compose -f docker-compose.prod.yml up -d
+```
+
+> **Важно:** Перед удалением тома убедитесь, что у вас есть резервная копия данных
+> (см. раздел «Резервное копирование»), или что это первоначальная установка.
+
+### Бэкенд не стартует (другие ошибки подключения к БД)
 ```bash
 # Проверить что PostgreSQL запущен и здоров
 docker-compose ps postgres
