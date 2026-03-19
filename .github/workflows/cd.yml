@@ -32,6 +32,8 @@ jobs:
             image: telegram-adapter
           - context: ./adapters/vk
             image: vk-adapter
+          - context: ./adapters/mattermost
+            image: mattermost-adapter
 
     steps:
       - uses: actions/checkout@v4
@@ -68,67 +70,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Deploy to staging (on main branch push)
-  # Requires these GitHub secrets:
-  #   STAGING_SSH_KEY   - SSH private key for staging server
-  #   STAGING_HOST      - Staging server hostname or IP
-  #   STAGING_USER      - SSH user on staging server (default: ubuntu)
-  #   STAGING_APP_DIR   - App directory on server (default: /opt/groupbuy)
-  deploy-staging:
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - name: Check required secrets
-        run: |
-          if [ -z "${{ secrets.STAGING_SSH_KEY }}" ]; then
-            echo "::warning::STAGING_SSH_KEY secret is not set. Skipping deployment."
-            echo "To enable automatic deployment, add the following secrets in repository Settings → Secrets:"
-            echo "  STAGING_SSH_KEY   - SSH private key for staging server"
-            echo "  STAGING_HOST      - Staging server hostname or IP"
-            echo "  STAGING_USER      - SSH user (default: ubuntu)"
-            echo "  STAGING_APP_DIR   - App directory (default: /opt/groupbuy)"
-            exit 0
-          fi
-          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
-            echo "::error::STAGING_HOST secret is not set."
-            exit 1
-          fi
-
-      - name: Deploy to staging
-        if: ${{ secrets.STAGING_SSH_KEY != '' && secrets.STAGING_HOST != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER || 'ubuntu' }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            APP_DIR="${{ secrets.STAGING_APP_DIR || '/opt/groupbuy' }}"
-            IMAGE_TAG="ghcr.io/${{ github.repository }}"
-
-            echo "=== Deploying to staging ==="
-            cd "$APP_DIR"
-
-            # Pull latest code
-            git pull origin main
-
-            # Pull latest Docker images
-            docker compose -f docker-compose.prod.yml pull
-
-            # Restart services with zero downtime
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Note: The core service is a Rust binary that applies DB migrations on startup automatically.
-            # No separate migration step is needed.
-
-            # Clean up old images
-            docker image prune -f
-
-            echo "=== Staging deployment complete ==="
-            docker compose -f docker-compose.prod.yml ps
-
-  # Deploy to production (on version tag)
+  # Deploy to production (on every push to main)
   # Requires these GitHub secrets:
   #   PRODUCTION_SSH_KEY   - SSH private key for production server
   #   PRODUCTION_HOST      - Production server hostname or IP
@@ -136,7 +78,7 @@ jobs:
   #   PRODUCTION_APP_DIR   - App directory on server (default: /opt/groupbuy)
   deploy-production:
     needs: build-and-push
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -144,7 +86,7 @@ jobs:
         run: |
           if [ -z "${{ secrets.PRODUCTION_SSH_KEY }}" ]; then
             echo "::warning::PRODUCTION_SSH_KEY secret is not set. Skipping deployment."
-            echo "To enable automatic production deployment, add the following secrets:"
+            echo "To enable automatic production deployment, add the following secrets in repository Settings → Secrets:"
             echo "  PRODUCTION_SSH_KEY   - SSH private key for production server"
             echo "  PRODUCTION_HOST      - Production server hostname or IP"
             echo "  PRODUCTION_USER      - SSH user (default: ubuntu)"
@@ -156,7 +98,7 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy to production
+      - name: Deploy to production via SSH
         if: ${{ secrets.PRODUCTION_SSH_KEY != '' && secrets.PRODUCTION_HOST != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -165,32 +107,39 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             APP_DIR="${{ secrets.PRODUCTION_APP_DIR || '/opt/groupbuy' }}"
-            VERSION="${{ github.ref_name }}"
+            REGISTRY="ghcr.io"
+            REPO="${{ github.repository }}"
+            SHA="${{ github.sha }}"
 
-            echo "=== Deploying version $VERSION to production ==="
+            echo "=== Deploying commit $SHA to production ==="
             cd "$APP_DIR"
 
-            # Pull latest code for this tag
-            git fetch --tags
-            git checkout "$VERSION"
+            # Pull latest code
+            git fetch origin main
+            git checkout main
+            git pull origin main
 
-            # Pull latest Docker images
+            # Log in to GitHub Container Registry
+            # Uses GHCR_TOKEN secret if set; otherwise images must be public.
+            if [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
+              echo "${{ secrets.GHCR_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+            fi
+
+            # Pull latest Docker images built by CI (do not rebuild on server)
             docker compose -f docker-compose.prod.yml pull
 
-            # Create backup before deployment
+            # Create database backup before deployment
             echo "Creating database backup..."
+            mkdir -p /backups/groupbuy
             docker compose -f docker-compose.prod.yml exec -T postgres \
-              pg_dump -U "$DB_USER" "$DB_NAME" \
-              > "/backups/groupbuy/pre-deploy-$VERSION-$(date +%Y%m%d_%H%M%S).sql" 2>/dev/null || true
+              pg_dump -U "${DB_USER:-postgres}" "${DB_NAME:-groupbuy}" \
+              > "/backups/groupbuy/pre-deploy-$(date +%Y%m%d_%H%M%S).sql" 2>/dev/null || true
 
-            # Restart services with zero downtime
+            # Restart services (DB migrations run automatically on core startup)
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Note: The core service is a Rust binary that applies DB migrations on startup automatically.
-            # No separate migration step is needed.
 
             # Clean up old images
             docker image prune -f
 
-            echo "=== Production deployment complete: $VERSION ==="
+            echo "=== Production deployment complete ==="
             docker compose -f docker-compose.prod.yml ps

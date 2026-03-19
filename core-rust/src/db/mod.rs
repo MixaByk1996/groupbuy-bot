@@ -2,10 +2,32 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new()
-        .max_connections(10)
-        .connect(database_url)
-        .await
+    const MAX_RETRIES: u32 = 10;
+    const RETRY_DELAY_SECS: u64 = 3;
+
+    let mut last_err = None;
+    for attempt in 1..=MAX_RETRIES {
+        match PgPoolOptions::new()
+            .max_connections(10)
+            .acquire_timeout(std::time::Duration::from_secs(5))
+            .connect(database_url)
+            .await
+        {
+            Ok(pool) => return Ok(pool),
+            Err(e) => {
+                tracing::warn!(
+                    "Database connection attempt {}/{} failed: {}. Retrying in {}s...",
+                    attempt,
+                    MAX_RETRIES,
+                    e,
+                    RETRY_DELAY_SECS
+                );
+                last_err = Some(e);
+                tokio::time::sleep(std::time::Duration::from_secs(RETRY_DELAY_SECS)).await;
+            }
+        }
+    }
+    Err(last_err.unwrap())
 }
 
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
