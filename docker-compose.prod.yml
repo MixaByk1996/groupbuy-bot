@@ -9,12 +9,18 @@ version: '3.8'
 #   5. Run: docker compose -f docker-compose.prod.yml up -d
 #
 # Two-server deployment: see docker-compose.two-server.yml
+#
+# Images are built by CI and pushed to GitHub Container Registry (ghcr.io).
+# Set IMAGE_TAG in .env to pin a specific version (default: main).
+# Example .env entries:
+#   REGISTRY=ghcr.io
+#   IMAGE_PREFIX=mixabyk1996/groupbuy-bot
+#   IMAGE_TAG=main
 
 services:
   # Core API (Rust backend)
   core:
-    build: ./core-rust
-    image: groupbuy/core:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/core:${IMAGE_TAG:-main}
     container_name: groupbuy-core
     restart: unless-stopped
     environment:
@@ -34,12 +40,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
   # Bot service (Telegram / VK message handler)
   bot:
-    build: ./bot
-    image: groupbuy/bot:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/bot:${IMAGE_TAG:-main}
     container_name: groupbuy-bot
     restart: unless-stopped
     environment:
@@ -57,8 +62,7 @@ services:
 
   # Telegram adapter
   telegram-adapter:
-    build: ./adapters/telegram
-    image: groupbuy/telegram-adapter:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/telegram-adapter:${IMAGE_TAG:-main}
     container_name: groupbuy-telegram-adapter
     restart: unless-stopped
     environment:
@@ -71,8 +75,7 @@ services:
 
   # Mattermost adapter
   mattermost-adapter:
-    build: ./adapters/mattermost
-    image: groupbuy/mattermost-adapter:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/mattermost-adapter:${IMAGE_TAG:-main}
     container_name: groupbuy-mattermost-adapter
     restart: unless-stopped
     environment:
@@ -89,8 +92,7 @@ services:
 
   # WebSocket server for real-time chat
   websocket-server:
-    build: ./infrastructure/websocket
-    image: groupbuy/websocket:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/websocket:${IMAGE_TAG:-main}
     container_name: groupbuy-websocket
     restart: unless-stopped
     environment:
@@ -114,8 +116,7 @@ services:
 
   # React frontend (production build)
   frontend-react:
-    build: ./frontend-react
-    image: groupbuy/frontend:latest
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-mixabyk1996/groupbuy-bot}/frontend:${IMAGE_TAG:-main}
     container_name: groupbuy-frontend
     restart: unless-stopped
     depends_on:
@@ -147,10 +148,13 @@ services:
       -c wal_buffers=16MB
       -c random_page_cost=1.1
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      # Use pg_isready with explicit -U flag populated from the env var at container level.
+      # The variable is available inside the container because POSTGRES_USER is set above.
+      test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   # Redis (persistent, with memory limit)
   redis:
