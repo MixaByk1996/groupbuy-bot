@@ -192,6 +192,7 @@ async def join_procurement(callback: CallbackQuery, state: FSMContext):
             reply_markup=None,
         )
         from dialogs.registration import RegistrationStates
+
         await state.set_state(RegistrationStates.waiting_for_phone)
         await callback.answer()
         return

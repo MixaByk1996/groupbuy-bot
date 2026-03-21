@@ -128,9 +128,7 @@ async def start_registration(
     message is shown to the user before the phone-number prompt.
     """
     context_msg = _REASON_MESSAGES.get(reason, "")
-    intro = (
-        f"{context_msg}\n\n" if context_msg else ""
-    ) + (
+    intro = (f"{context_msg}\n\n" if context_msg else "") + (
         "Registration is quick — we only need your phone number.\n"
         "Your name is taken from your Telegram profile automatically.\n\n"
         "Please enter your phone number (e.g., +79991234567):"
