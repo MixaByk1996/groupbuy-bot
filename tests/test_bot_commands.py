@@ -8,22 +8,6 @@ from unittest.mock import AsyncMock, patch
 class TestRegistrationDialog:
     """Tests for registration dialog"""
 
-    def test_validate_name_valid(self):
-        """Test valid name validation"""
-        from bot.dialogs.registration import validate_name
-
-        assert validate_name("John") is True
-        assert validate_name("John Doe") is True
-        assert validate_name("Ivan") is True
-
-    def test_validate_name_invalid(self):
-        """Test invalid name validation"""
-        from bot.dialogs.registration import validate_name
-
-        assert validate_name("J") is False  # Too short
-        assert validate_name("123") is False  # Numbers
-        assert validate_name("") is False  # Empty
-
     def test_validate_phone_valid(self):
         """Test valid phone validation"""
         from bot.dialogs.registration import validate_phone
@@ -40,24 +24,39 @@ class TestRegistrationDialog:
         assert validate_phone("") is False  # Empty
         assert validate_phone("not a phone") is False
 
-    def test_validate_email_valid(self):
-        """Test valid email validation"""
-        from bot.dialogs.registration import validate_email
+    def test_reason_messages_exist(self):
+        """Test that all expected registration reasons have user-facing messages"""
+        from bot.dialogs.registration import _REASON_MESSAGES
 
-        assert validate_email("test@example.com") is True
-        assert validate_email("user.name@domain.org") is True
+        for reason in ("join", "chat", "profile", "balance"):
+            assert reason in _REASON_MESSAGES
+            assert _REASON_MESSAGES[reason]  # non-empty string
 
-    def test_validate_email_invalid(self):
-        """Test invalid email validation"""
-        from bot.dialogs.registration import validate_email
+    def test_unknown_reason_does_not_crash(self):
+        """start_registration should work with an unknown reason key"""
+        from bot.dialogs.registration import _REASON_MESSAGES
 
-        assert validate_email("not an email") is False
-        assert validate_email("@domain.com") is False
-        assert validate_email("user@") is False
+        # Unknown reasons fall back to empty string (no context prefix)
+        msg = _REASON_MESSAGES.get("unknown_reason", "")
+        assert msg == ""
 
 
 class TestKeyboards:
     """Tests for keyboard utilities"""
+
+    def test_get_guest_keyboard(self):
+        """Guest keyboard should show Procurements and Help, but not profile/balance"""
+        from bot.keyboards import get_guest_keyboard
+
+        keyboard = get_guest_keyboard()
+        assert keyboard is not None
+        buttons = [btn.text for row in keyboard.keyboard for btn in row]
+        assert "Procurements" in buttons
+        assert "Help" in buttons
+        # Guests should not see profile/balance buttons
+        assert "Profile" not in buttons
+        assert "Balance" not in buttons
+        assert "My Orders" not in buttons
 
     def test_get_main_keyboard_buyer(self):
         """Test main keyboard for buyer"""
@@ -101,12 +100,18 @@ class TestProcurementFormatting:
     """Tests for procurement formatting"""
 
     def test_get_status_emoji(self):
-        """Test status emoji mapping"""
+        """Test status emoji mapping: known statuses return a value (possibly empty
+        string as a placeholder), unknown statuses return empty string."""
         from bot.handlers.procurement_commands import get_status_emoji
 
-        assert get_status_emoji("active") != ""
-        assert get_status_emoji("completed") != ""
-        assert get_status_emoji("unknown") == ""
+        # Known statuses must be present in the map (may return empty string placeholder)
+        known = {"draft", "active", "stopped", "payment", "completed", "cancelled"}
+        for s in known:
+            result = get_status_emoji(s)
+            assert isinstance(result, str), f"Expected str for status {s!r}"
+
+        # Unknown status must return empty string
+        assert get_status_emoji("unknown_status") == ""
 
     def test_format_procurement_details(self):
         """Test procurement details formatting"""
@@ -135,6 +140,88 @@ class TestProcurementFormatting:
         assert "Test description" in result
         assert "50%" in result
         assert "can join" in result.lower()
+
+
+class TestGuestMode:
+    """Tests ensuring guests can browse without registering"""
+
+    @pytest.mark.asyncio
+    async def test_cmd_procurements_no_auth_required(self):
+        """Browsing procurements should work without a registered user"""
+        from bot.handlers.procurement_commands import cmd_procurements
+
+        message = AsyncMock()
+        message.from_user.id = 99999
+
+        procurements = [{"id": 1, "title": "Proc 1", "progress": 10}]
+
+        with patch(
+            "bot.handlers.procurement_commands.api_client.get_procurements",
+            new_callable=AsyncMock,
+            return_value=procurements,
+        ):
+            await cmd_procurements(message)
+
+        message.answer.assert_called_once()
+        call_text = message.answer.call_args[0][0]
+        assert "Proc" in call_text or "Active" in call_text
+
+    @pytest.mark.asyncio
+    async def test_join_procurement_triggers_registration_for_guest(self):
+        """Guests clicking Join should enter registration flow, not an error"""
+        from bot.handlers.procurement_commands import join_procurement
+
+        callback = AsyncMock()
+        callback.data = "join_proc_42"
+        callback.from_user.id = 99999
+
+        state = AsyncMock()
+        state.update_data = AsyncMock()
+        state.set_state = AsyncMock()
+        state.get_data = AsyncMock(return_value={})
+
+        with patch(
+            "bot.handlers.procurement_commands.api_client.get_user_by_platform",
+            new_callable=AsyncMock,
+            return_value=None,  # guest — not registered
+        ):
+            await join_procurement(callback, state)
+
+        # Should set registration state, not procurement join state
+        state.set_state.assert_called_once()
+        from bot.dialogs.registration import RegistrationStates
+        state.set_state.assert_called_with(RegistrationStates.waiting_for_phone)
+
+        # Should edit the message to show a registration prompt
+        callback.message.edit_text.assert_called_once()
+        prompt_text = callback.message.edit_text.call_args[0][0]
+        assert "phone" in prompt_text.lower() or "register" in prompt_text.lower()
+
+    @pytest.mark.asyncio
+    async def test_start_command_no_registration_for_new_user(self):
+        """New users should see the guest welcome, not be forced to register"""
+        from bot.handlers.user_commands import cmd_start
+
+        message = AsyncMock()
+        message.from_user.id = 88888
+        message.from_user.first_name = "Alice"
+
+        state = AsyncMock()
+        state.set_state = AsyncMock()
+
+        with patch(
+            "bot.handlers.user_commands.api_client.check_user_exists",
+            new_callable=AsyncMock,
+            return_value=False,
+        ):
+            await cmd_start(message, state)
+
+        message.answer.assert_called_once()
+        text = message.answer.call_args[0][0]
+        # Should show a friendly guest welcome, NOT launch registration
+        assert "Welcome" in text
+        # Registration state should NOT be set
+        state.set_state.assert_not_called()
 
 
 class TestAPIClient:

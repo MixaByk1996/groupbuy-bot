@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from api_client import api_client
 from keyboards import (
     get_main_keyboard,
+    get_guest_keyboard,
     get_profile_keyboard,
     get_balance_keyboard,
     get_deposit_keyboard,
@@ -21,7 +22,12 @@ router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    """Handle /start command"""
+    """Handle /start command.
+
+    Registered users get their full menu; guests can browse freely.
+    Registration is only triggered when the user wants to participate
+    (join a procurement, enter a chat, etc.).
+    """
     user_exists = await api_client.check_user_exists(
         platform="telegram", platform_user_id=str(message.from_user.id)
     )
@@ -36,7 +42,15 @@ async def cmd_start(message: Message, state: FSMContext):
             reply_markup=get_main_keyboard(role),
         )
     else:
-        await start_registration(message, state)
+        # Allow free browsing — do not force registration on entry
+        first_name = message.from_user.first_name or "Guest"
+        await message.answer(
+            f"Welcome to GroupBuy Bot, {first_name}!\n\n"
+            "You can browse active procurements without registering.\n"
+            "Registration is only needed when you want to join a procurement or write in a chat.\n\n"
+            "Use the menu below to get started:",
+            reply_markup=get_guest_keyboard(),
+        )
 
 
 @router.message(Command("help"))
@@ -69,14 +83,14 @@ async def cmd_help(message: Message):
 
 
 @router.message(Command("profile"))
-async def cmd_profile(message: Message):
+async def cmd_profile(message: Message, state: FSMContext):
     """Handle /profile command"""
     user = await api_client.get_user_by_platform(
         platform="telegram", platform_user_id=str(message.from_user.id)
     )
 
     if not user:
-        await message.answer("You are not registered. Use /start to register.")
+        await start_registration(message, state, reason="profile")
         return
 
     role_display = {
@@ -101,14 +115,14 @@ async def cmd_profile(message: Message):
 
 
 @router.message(Command("balance"))
-async def cmd_balance(message: Message):
+async def cmd_balance(message: Message, state: FSMContext):
     """Handle /balance command"""
     user = await api_client.get_user_by_platform(
         platform="telegram", platform_user_id=str(message.from_user.id)
     )
 
     if not user:
-        await message.answer("You are not registered. Use /start to register.")
+        await start_registration(message, state, reason="balance")
         return
 
     balance_data = await api_client.get_user_balance(user["id"])
@@ -130,15 +144,15 @@ async def cmd_balance(message: Message):
 
 
 @router.message(F.text == "Profile")
-async def text_profile(message: Message):
+async def text_profile(message: Message, state: FSMContext):
     """Handle 'Profile' text button"""
-    await cmd_profile(message)
+    await cmd_profile(message, state)
 
 
 @router.message(F.text == "Balance")
-async def text_balance(message: Message):
+async def text_balance(message: Message, state: FSMContext):
     """Handle 'Balance' text button"""
-    await cmd_balance(message)
+    await cmd_balance(message, state)
 
 
 @router.message(F.text == "Help")

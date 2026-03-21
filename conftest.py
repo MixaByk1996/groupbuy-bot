@@ -4,8 +4,9 @@ Pytest configuration for running tests with SQLite (no PostgreSQL needed).
 import os
 import sys
 
-# Add core directory to path
+# Add core and bot directories to path so their modules can be imported directly
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'core'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'bot'))
 
 # Try to set up Django if available
 try:
@@ -31,6 +32,7 @@ def pytest_configure(config):
 
     if not settings.configured:
         settings.configure(
+            ROOT_URLCONF='conftest_urls',
             DATABASES={
                 'default': {
                     'ENGINE': 'django.db.backends.sqlite3',

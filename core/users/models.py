@@ -24,9 +24,10 @@ class User(models.Model):
     platform = models.CharField(max_length=20, choices=Platform.choices, default=Platform.TELEGRAM)
     platform_user_id = models.CharField(max_length=100, db_index=True)
 
-    # User info
+    # User info — taken from the messenger profile, all optional so users
+    # control what personal data they share.
     username = models.CharField(max_length=100, blank=True)
-    first_name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
 
     # Contact info

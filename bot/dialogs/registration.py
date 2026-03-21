@@ -1,5 +1,13 @@
 """
-Registration dialog for new users
+Registration dialog for new users.
+
+Registration is lazy — it is only triggered when the user actually wants to
+participate (join a procurement, enter a chat, use their profile/balance, etc.).
+Guests can browse all public content without registering.
+
+Only a phone number is required.  The user's name is taken from their Telegram
+profile automatically; email is intentionally not collected during sign-up
+because users share personal data voluntarily and at their own discretion.
 """
 
 import re
@@ -16,18 +24,11 @@ from keyboards import get_role_keyboard, get_main_keyboard
 class RegistrationStates(StatesGroup):
     """Registration dialog states"""
 
-    waiting_for_name = State()
     waiting_for_phone = State()
-    waiting_for_email = State()
     waiting_for_role = State()
 
 
 router = Router()
-
-
-def validate_name(name: str) -> bool:
-    """Validate name format"""
-    return bool(re.match(r"^[\u0400-\u04FF\s]{2,50}$|^[a-zA-Z\s]{2,50}$", name))
 
 
 def validate_phone(phone: str) -> bool:
@@ -35,27 +36,13 @@ def validate_phone(phone: str) -> bool:
     return bool(re.match(r"^\+?[1-9]\d{10,14}$", phone))
 
 
-def validate_email(email: str) -> bool:
-    """Validate email format"""
-    return bool(re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email))
-
-
-@router.message(RegistrationStates.waiting_for_name)
-async def process_name(message: Message, state: FSMContext):
-    """Process name input"""
-    name = message.text.strip()
-
-    if not validate_name(name):
-        await message.answer(
-            "Please enter a valid name (letters only, 2-50 characters)."
-        )
-        return
-
-    await state.update_data(name=name)
-    await state.set_state(RegistrationStates.waiting_for_phone)
-    await message.answer(
-        f"Great, {name}!\n\nNow please enter your phone number (e.g., +79991234567):"
-    )
+# Map of reasons to user-facing messages shown before registration starts
+_REASON_MESSAGES = {
+    "join": "To join a procurement you need to register first.",
+    "chat": "To write in a chat you need to register first.",
+    "profile": "To view your profile you need to register first.",
+    "balance": "To check your balance you need to register first.",
+}
 
 
 @router.message(RegistrationStates.waiting_for_phone)
@@ -71,20 +58,6 @@ async def process_phone(message: Message, state: FSMContext):
         phone = "+" + phone
 
     await state.update_data(phone=phone)
-    await state.set_state(RegistrationStates.waiting_for_email)
-    await message.answer("Thank you! Now please enter your email address:")
-
-
-@router.message(RegistrationStates.waiting_for_email)
-async def process_email(message: Message, state: FSMContext):
-    """Process email input"""
-    email = message.text.strip().lower()
-
-    if not validate_email(email):
-        await message.answer("Please enter a valid email address.")
-        return
-
-    await state.update_data(email=email)
     await state.set_state(RegistrationStates.waiting_for_role)
     await message.answer(
         "Almost done! Please select your role:", reply_markup=get_role_keyboard()
@@ -98,15 +71,20 @@ async def process_role(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
+    # Use Telegram profile name — no need to ask, user controls what they share
+    first_name = callback.from_user.first_name or ""
+    last_name = callback.from_user.last_name or ""
+
     # Register user via API
     user_data = {
         "platform": "telegram",
         "platform_user_id": str(callback.from_user.id),
         "username": callback.from_user.username or "",
-        "first_name": data.get("name", callback.from_user.first_name),
-        "last_name": "",
+        "first_name": first_name,
+        "last_name": last_name,
         "phone": data.get("phone", ""),
-        "email": data.get("email", ""),
+        # email is intentionally omitted — users share it voluntarily later
+        "email": "",
         "role": role,
         "language_code": callback.from_user.language_code or "en",
     }
@@ -140,11 +118,23 @@ async def process_role(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-async def start_registration(message: Message, state: FSMContext):
-    """Start the registration process"""
-    await state.set_state(RegistrationStates.waiting_for_name)
-    await message.answer(
-        "Welcome to GroupBuy Bot!\n\n"
-        "Let's get you registered.\n\n"
-        "Please enter your name:"
+async def start_registration(
+    message: Message, state: FSMContext, reason: str = ""
+) -> None:
+    """Start the registration process.
+
+    ``reason`` is a short key that explains *why* registration is needed
+    (e.g. "join", "chat", "profile", "balance").  An appropriate context
+    message is shown to the user before the phone-number prompt.
+    """
+    context_msg = _REASON_MESSAGES.get(reason, "")
+    intro = (
+        f"{context_msg}\n\n" if context_msg else ""
+    ) + (
+        "Registration is quick — we only need your phone number.\n"
+        "Your name is taken from your Telegram profile automatically.\n\n"
+        "Please enter your phone number (e.g., +79991234567):"
     )
+
+    await state.set_state(RegistrationStates.waiting_for_phone)
+    await message.answer(intro)
