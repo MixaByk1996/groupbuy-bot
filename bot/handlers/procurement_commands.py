@@ -15,6 +15,7 @@ from keyboards import (
     get_categories_keyboard,
     get_main_keyboard,
 )
+from dialogs.registration import start_registration
 
 
 class ProcurementCreationStates(StatesGroup):
@@ -70,14 +71,14 @@ async def text_procurements(message: Message):
 
 
 @router.message(Command("my_procurements"))
-async def cmd_my_procurements(message: Message):
+async def cmd_my_procurements(message: Message, state: FSMContext):
     """Handle /my_procurements command"""
     user = await api_client.get_user_by_platform(
         platform="telegram", platform_user_id=str(message.from_user.id)
     )
 
     if not user:
-        await message.answer("You are not registered. Use /start to register.")
+        await start_registration(message, state, reason="join")
         return
 
     result = await api_client.get_user_procurements(user["id"])
@@ -133,9 +134,9 @@ async def cmd_my_procurements(message: Message):
 
 
 @router.message(F.text == "My Orders")
-async def text_my_orders(message: Message):
+async def text_my_orders(message: Message, state: FSMContext):
     """Handle 'My Orders' text button"""
-    await cmd_my_procurements(message)
+    await cmd_my_procurements(message, state)
 
 
 @router.callback_query(F.data.startswith("view_proc_"))
@@ -169,8 +170,32 @@ async def view_procurement(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("join_proc_"))
 async def join_procurement(callback: CallbackQuery, state: FSMContext):
-    """Start joining a procurement"""
+    """Start joining a procurement.
+
+    Guests are prompted to register first; registered users proceed directly.
+    """
     procurement_id = int(callback.data.split("_")[2])
+
+    # Check if the user is registered
+    user = await api_client.get_user_by_platform(
+        platform="telegram", platform_user_id=str(callback.from_user.id)
+    )
+
+    if not user:
+        # Save intended procurement so we can resume after registration
+        await state.update_data(pending_join_procurement_id=procurement_id)
+        await callback.message.edit_text(
+            "To join a procurement you need to register first.\n\n"
+            "Registration is quick — we only need your phone number.\n"
+            "Your name is taken from your Telegram profile automatically.\n\n"
+            "Please enter your phone number (e.g., +79991234567):",
+            reply_markup=None,
+        )
+        from dialogs.registration import RegistrationStates
+
+        await state.set_state(RegistrationStates.waiting_for_phone)
+        await callback.answer()
+        return
 
     await state.update_data(procurement_id=procurement_id)
     await state.set_state(JoinProcurementStates.waiting_for_quantity)
@@ -435,7 +460,7 @@ async def cmd_create_procurement(message: Message, state: FSMContext):
     )
 
     if not user:
-        await message.answer("You are not registered. Use /start to register.")
+        await start_registration(message, state, reason="join")
         return
 
     if user.get("role") != "organizer":

@@ -7,10 +7,12 @@ from datetime import datetime, timedelta
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from api_client import api_client
 from config import config
+from dialogs.registration import start_registration
 
 router = Router()
 
@@ -23,14 +25,14 @@ def generate_chat_token(user_id: int) -> str:
 
 
 @router.message(Command("chat"))
-async def cmd_chat(message: Message):
+async def cmd_chat(message: Message, state: FSMContext):
     """Handle /chat command - show available chats"""
     user = await api_client.get_user_by_platform(
         platform="telegram", platform_user_id=str(message.from_user.id)
     )
 
     if not user:
-        await message.answer("You are not registered. Use /start to register.")
+        await start_registration(message, state, reason="chat")
         return
 
     # Get user's procurements (they can chat in procurements they participate in)
@@ -83,9 +85,9 @@ async def cmd_chat(message: Message):
 
 
 @router.message(F.text == "Chat")
-async def text_chat(message: Message):
+async def text_chat(message: Message, state: FSMContext):
     """Handle 'Chat' text button"""
-    await cmd_chat(message)
+    await cmd_chat(message, state)
 
 
 @router.callback_query(F.data.startswith("enter_chat_"))

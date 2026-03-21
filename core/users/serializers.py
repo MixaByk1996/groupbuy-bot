@@ -22,15 +22,26 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    """Serializer for user registration"""
+    """Serializer for user registration.
+
+    Only ``phone`` is required.  Name fields are taken from the messenger
+    profile and may be empty (users control what personal data they share).
+    Email is intentionally not collected at registration time.
+    """
+
+    first_name = serializers.CharField(required=False, allow_blank=True, default='')
+    last_name = serializers.CharField(required=False, allow_blank=True, default='')
+    phone = serializers.CharField(required=False, allow_blank=True, default='')
+    email = serializers.EmailField(required=False, allow_blank=True, default='')
 
     class Meta:
         model = User
         fields = [
-            'platform', 'platform_user_id', 'username',
+            'id', 'platform', 'platform_user_id', 'username',
             'first_name', 'last_name', 'phone', 'email',
             'role', 'language_code'
         ]
+        read_only_fields = ['id']
 
     def validate_phone(self, value):
         if value and not value.startswith('+'):

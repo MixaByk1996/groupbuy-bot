@@ -10,6 +10,15 @@ from aiogram.types import (
 )
 
 
+def get_guest_keyboard() -> ReplyKeyboardMarkup:
+    """Get reply keyboard for unauthenticated (guest) users"""
+    buttons = [
+        [KeyboardButton(text="Procurements")],
+        [KeyboardButton(text="Help")],
+    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+
 def get_main_keyboard(role: str = "buyer") -> ReplyKeyboardMarkup:
     """Get main reply keyboard based on user role"""
     buttons = [
