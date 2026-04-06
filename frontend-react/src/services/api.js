@@ -126,7 +126,22 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getNotifications: (userId) => request(`/chat/notifications/?user=${userId}`),
+  getNotifications: (userId) => request(`/chat/notifications/?user_id=${userId}`),
+
+  markNotificationRead: (notificationId) =>
+    request(`/chat/notifications/${notificationId}/mark_read/`, { method: 'POST' }),
+
+  markAllNotificationsRead: (userId) =>
+    request('/chat/notifications/mark_all_read/', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    }),
+
+  updateProcurementStatus: (id, newStatus, userId) =>
+    request(`/procurements/${id}/update_status/`, {
+      method: 'POST',
+      body: JSON.stringify({ status: newStatus, user_id: userId }),
+    }),
 
   // Payment endpoints
   createPayment: (data) =>
