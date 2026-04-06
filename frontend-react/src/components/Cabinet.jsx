@@ -430,7 +430,7 @@ function ContentPanel({ children }) {
 
 // ─── Category page content ────────────────────────────────────────────────────
 
-function CategoryPageContent({ category, procurements, user }) {
+function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedLoading, onLoadNewsFeed, navigate }) {
   if (!category) return null;
 
   if (category.id === 'subscriptions') {
@@ -444,24 +444,76 @@ function CategoryPageContent({ category, procurements, user }) {
   }
 
   if (category.id === 'exchange') {
-    const activeProcs = procurements?.organized?.filter((p) => p.status === 'active') || [];
+    const allProcs = [
+      ...(procurements?.organized || []),
+      ...(procurements?.participating || []),
+    ].filter((p) => p.status === 'active');
     return (
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', padding: '4px 0' }}>
           Биржа — список желающих купить и продать.
         </p>
-        {activeProcs.length === 0 ? (
+        {allProcs.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>Нет активных позиций</p>
         ) : (
-          activeProcs.slice(0, 3).map((p) => (
-            <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--tg-shadow)' }}>
+          allProcs.slice(0, 5).map((p) => (
+            <div
+              key={p.id}
+              onClick={() => navigate && navigate(`/chat/${p.id}`)}
+              style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--tg-shadow)', cursor: 'pointer' }}
+            >
               <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.title}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-                {p.city} · {formatCurrency(p.current_amount || 0)}
+                {p.city} · {formatCurrency(p.current_amount || 0)} · {p.participant_count || 0} участн.
               </div>
             </div>
           ))
         )}
+      </div>
+    );
+  }
+
+  if (category.id === 'news') {
+    return (
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', margin: 0 }}>
+            Посты от организаторов и поставщиков.
+          </p>
+          <button
+            className="btn btn-outline btn-round"
+            style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap' }}
+            onClick={onLoadNewsFeed}
+            disabled={newsFeedLoading}
+          >
+            {newsFeedLoading ? 'Загрузка...' : '🔄 Обновить'}
+          </button>
+        </div>
+        {newsFeed.length === 0 && !newsFeedLoading && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>
+            Нажмите «Обновить» чтобы загрузить новости
+          </p>
+        )}
+        {newsFeed.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => item.procurement_id && navigate && navigate(`/chat/${item.procurement_id}`)}
+            style={{
+              background: 'var(--tg-bg-primary)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              boxShadow: 'var(--tg-shadow)',
+              cursor: item.procurement_id ? 'pointer' : 'default',
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>{item.title}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', marginBottom: 6, lineHeight: 1.4 }}>{item.text}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)', fontWeight: 500 }}>{item.author}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(item.date)}</span>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -526,10 +578,27 @@ function Cabinet() {
 
   // Messages/Invitations
   const [messages, setMessages] = useState([]);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyText, setReplyText] = useState('');
+
+  // Invitations
+  const [invitations, setInvitations] = useState([]);
 
   // Pending procurements
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingLoaded, setPendingLoaded] = useState(false);
+
+  // Approve supplier modal
+  const [approveSupplierOpen, setApproveSupplierOpen] = useState(false);
+  const [approveSupplierProcurement, setApproveSupplierProcurement] = useState(null);
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
+  const [supplierSearchResults, setSupplierSearchResults] = useState([]);
+  const [supplierSearchLoading, setSupplierSearchLoading] = useState(false);
+  const supplierSearchTimeout = React.useRef(null);
+
+  // News feed state
+  const [newsFeed, setNewsFeed] = useState([]);
+  const [newsFeedLoading, setNewsFeedLoading] = useState(false);
 
   // LC state
   const [activeSection, setActiveSection] = useState(null);
@@ -548,9 +617,19 @@ function Cabinet() {
 
         if (notifications) {
           const notifList = notifications.results || notifications;
-          setMessages(notifList.map((n) => ({
+          const invites = notifList.filter((n) => n.notification_type === 'invite' || n.notification_type === 'invitation');
+          const msgs = notifList.filter((n) => n.notification_type !== 'invite' && n.notification_type !== 'invitation');
+          setInvitations(invites.map((n) => ({
             id: n.id,
-            from: n.notification_type === 'system' ? 'Система' : 'Администратор',
+            from: n.sender_name || 'Организатор',
+            text: n.title ? `${n.title}: ${n.message}` : n.message,
+            date: n.created_at,
+            read: n.is_read,
+            procurement_id: n.procurement_id || n.related_object_id,
+          })));
+          setMessages(msgs.map((n) => ({
+            id: n.id,
+            from: n.notification_type === 'system' ? 'Система' : (n.sender_name || 'Администратор'),
             text: n.title ? `${n.title}: ${n.message}` : n.message,
             date: n.created_at,
             read: n.is_read,
@@ -673,6 +752,136 @@ function Cabinet() {
     setMessages((prev) => prev.map((m) => m.id === id ? { ...m, read: true } : m));
   };
 
+  const handleMarkInvitationRead = async (id) => {
+    try {
+      await api.markNotificationRead(id);
+    } catch {
+      // ignore
+    }
+    setInvitations((prev) => prev.map((inv) => inv.id === id ? { ...inv, read: true } : inv));
+  };
+
+  const handleReplyMessage = async () => {
+    if (!replyText.trim() || !replyTarget) return;
+    try {
+      await api.sendMessage({ text: replyText, recipient_id: replyTarget.sender_id });
+      addToast('Ответ отправлен', 'success');
+    } catch {
+      addToast('Ошибка отправки ответа', 'error');
+    }
+    setReplyTarget(null);
+    setReplyText('');
+  };
+
+  const handleStopProcurement = async (procurement) => {
+    if (!window.confirm(`Остановить закупку "${procurement.title}"? Участники получат уведомление с запросом подтверждения.`)) return;
+    try {
+      await api.stopProcurement(procurement.id);
+      setMyProcurements((prev) => {
+        if (!prev) return prev;
+        const updateList = (list) => list.map((p) => p.id === procurement.id ? { ...p, status: 'stopped' } : p);
+        return { organized: updateList(prev.organized), participating: updateList(prev.participating) };
+      });
+      setPaymentProcurements((prev) => prev.map((p) => p.id === procurement.id ? { ...p, status: 'stopped' } : p));
+      addToast('Закупка остановлена. Создан закрытый чат для участников.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Ошибка остановки закупки', 'error');
+    }
+  };
+
+  const handleOpenApproveSupplier = (procurement) => {
+    setApproveSupplierProcurement(procurement);
+    setSupplierSearchQuery('');
+    setSupplierSearchResults([]);
+    setApproveSupplierOpen(true);
+  };
+
+  const handleSupplierSearch = (query) => {
+    setSupplierSearchQuery(query);
+    if (supplierSearchTimeout.current) clearTimeout(supplierSearchTimeout.current);
+    if (!query.trim()) { setSupplierSearchResults([]); return; }
+    supplierSearchTimeout.current = setTimeout(async () => {
+      setSupplierSearchLoading(true);
+      try {
+        const results = await api.searchUsers(query);
+        const all = Array.isArray(results) ? results : (results.results || []);
+        setSupplierSearchResults(all.filter((u) => u.role === 'supplier'));
+      } catch {
+        setSupplierSearchResults([]);
+      } finally {
+        setSupplierSearchLoading(false);
+      }
+    }, 400);
+  };
+
+  const handleApproveSupplierSubmit = async (supplier) => {
+    if (!approveSupplierProcurement) return;
+    try {
+      await api.approveSupplier(approveSupplierProcurement.id, supplier.id);
+      setMyProcurements((prev) => {
+        if (!prev) return prev;
+        const updateList = (list) => list.map((p) => p.id === approveSupplierProcurement.id ? { ...p, supplier: supplier.id, supplier_name: `${supplier.first_name || ''} ${supplier.last_name || ''}`.trim() } : p);
+        return { organized: updateList(prev.organized), participating: updateList(prev.participating) };
+      });
+      addToast(`Поставщик ${supplier.first_name || ''} ${supplier.last_name || ''} одобрен`, 'success');
+      setApproveSupplierOpen(false);
+    } catch (err) {
+      addToast(err.message || 'Ошибка одобрения поставщика', 'error');
+    }
+  };
+
+  const handleCreateReceiptTable = async (procurement) => {
+    try {
+      const table = await api.getReceiptTable(procurement.id);
+      if (table) {
+        addToast('Таблица квитанций создана и отправлена поставщику', 'success');
+      }
+    } catch (err) {
+      addToast(err.message || 'Ошибка создания таблицы квитанций', 'error');
+    }
+  };
+
+  const handleCloseProcurement = async (procurement) => {
+    if (!window.confirm(`Закрыть закупку "${procurement.title}"? Она будет перенесена в историю.`)) return;
+    try {
+      await api.closeProcurement(procurement.id);
+      setMyProcurements((prev) => {
+        if (!prev) return prev;
+        const updateList = (list) => list.map((p) => p.id === procurement.id ? { ...p, status: 'completed' } : p);
+        return { organized: updateList(prev.organized), participating: updateList(prev.participating) };
+      });
+      setPaymentProcurements((prev) => prev.filter((p) => p.id !== procurement.id));
+      const completed = { ...procurement, status: 'completed' };
+      setProcurementHistory((prev) => [completed, ...prev.filter((p) => p.id !== procurement.id)]);
+      addToast('Закупка завершена и перенесена в историю', 'success');
+    } catch (err) {
+      addToast(err.message || 'Ошибка закрытия закупки', 'error');
+    }
+  };
+
+  const handleLoadNewsFeed = async () => {
+    setNewsFeedLoading(true);
+    try {
+      // Load procurements as a proxy for news (organizer/supplier updates)
+      const result = await api.getProcurements({ status: 'active' }).catch(() => null);
+      const list = result ? (result.results || result) : [];
+      // Use procurements as news items (title, organizer, city, date)
+      setNewsFeed(list.slice(0, 20).map((p) => ({
+        id: p.id,
+        title: p.title,
+        author: p.organizer_name || `Организатор #${p.organizer}`,
+        text: p.description || `Закупка в ${p.city || '...'}`,
+        date: p.created_at,
+        type: 'procurement',
+        procurement_id: p.id,
+      })));
+    } catch {
+      setNewsFeed([]);
+    } finally {
+      setNewsFeedLoading(false);
+    }
+  };
+
   const handleOpenPending = async () => {
     setActiveSection(activeSection === 'pending' ? null : 'pending');
     if (activeSection !== 'pending' && !pendingLoaded) {
@@ -793,28 +1002,51 @@ function Cabinet() {
         <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет сообщений</p>
       ) : (
         messages.map((m) => (
-          <div
-            key={m.id}
-            onClick={() => handleMarkMessageRead(m.id)}
-            style={{
-              background: m.read ? 'var(--tg-bg-primary)' : 'rgba(52,168,240,0.08)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              marginBottom: 6,
-              cursor: 'pointer',
-              borderLeft: m.read ? 'none' : '3px solid #34A8F0',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{m.from}</span>
-              {!m.read && (
-                <span style={{ background: '#34A8F0', color: '#fff', borderRadius: 10, fontSize: '0.65rem', padding: '0 6px' }}>
-                  Новое
-                </span>
-              )}
+          <div key={m.id} style={{ marginBottom: 6 }}>
+            <div
+              onClick={() => { handleMarkMessageRead(m.id); setReplyTarget(m); }}
+              style={{
+                background: m.read ? 'var(--tg-bg-primary)' : 'rgba(52,168,240,0.08)',
+                borderRadius: 8,
+                padding: '8px 12px',
+                cursor: 'pointer',
+                borderLeft: m.read ? 'none' : '3px solid #34A8F0',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{m.from}</span>
+                {!m.read && (
+                  <span style={{ background: '#34A8F0', color: '#fff', borderRadius: 10, fontSize: '0.65rem', padding: '0 6px' }}>
+                    Новое
+                  </span>
+                )}
+              </div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', display: 'block', marginTop: 2 }}>{m.text}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(m.date)}</span>
+                <span style={{ fontSize: '0.7rem', color: '#34A8F0' }}>Ответить</span>
+              </div>
             </div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', display: 'block', marginTop: 2 }}>{m.text}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(m.date)}</span>
+            {replyTarget?.id === m.id && (
+              <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: '0.8rem', padding: '6px 10px', flex: 1, borderRadius: 8 }}
+                  placeholder="Написать ответ..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleReplyMessage()}
+                  autoFocus
+                />
+                <button className="btn btn-primary btn-round" style={{ fontSize: '0.8rem', padding: '6px 12px', whiteSpace: 'nowrap' }} onClick={handleReplyMessage}>
+                  Отправить
+                </button>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', fontSize: '1rem', padding: '0 4px' }} onClick={() => { setReplyTarget(null); setReplyText(''); }}>
+                  ×
+                </button>
+              </div>
+            )}
           </div>
         ))
       )}
@@ -823,7 +1055,43 @@ function Cabinet() {
 
   const renderInvitations = () => (
     <ContentPanel>
-      <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет новых приглашений</p>
+      {invitations.length === 0 ? (
+        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет новых приглашений</p>
+      ) : (
+        invitations.map((inv) => (
+          <div
+            key={inv.id}
+            onClick={() => {
+              handleMarkInvitationRead(inv.id);
+              if (inv.procurement_id) navigate(`/chat/${inv.procurement_id}`);
+            }}
+            style={{
+              background: inv.read ? 'var(--tg-bg-primary)' : 'rgba(52,168,240,0.08)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 6,
+              cursor: 'pointer',
+              borderLeft: inv.read ? 'none' : '3px solid #34A8F0',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{inv.from}</span>
+              {!inv.read && (
+                <span style={{ background: '#34A8F0', color: '#fff', borderRadius: 10, fontSize: '0.65rem', padding: '0 6px' }}>
+                  Новое
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', display: 'block', marginTop: 2 }}>{inv.text}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(inv.date)}</span>
+              {inv.procurement_id && (
+                <span style={{ fontSize: '0.7rem', color: '#34A8F0', fontWeight: 500 }}>Перейти в чат →</span>
+              )}
+            </div>
+          </div>
+        ))
+      )}
     </ContentPanel>
   );
 
@@ -1044,6 +1312,90 @@ function Cabinet() {
     );
   };
 
+  const renderPaymentProcurements = () => (
+    <ContentPanel>
+      {paymentProcurements.length === 0 ? (
+        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет закупок в стадии оплаты</p>
+      ) : (
+        paymentProcurements.map((p) => (
+          <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', flex: 1 }} onClick={() => navigate(`/chat/${p.id}`)}>
+                {p.title}
+              </span>
+              <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.65rem', flexShrink: 0, marginLeft: 6 }}>
+                {getStatusText(p.status)}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 8 }}>
+              {p.city} · {p.participant_count || 0} участн. · {formatCurrency(p.current_amount || 0)}
+              {p.participation_deadline && ` · до ${formatTime(p.participation_deadline)}`}
+            </span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {p.status === 'active' && (
+                <button
+                  className="btn btn-outline btn-round"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  onClick={() => handleStopProcurement(p)}
+                >
+                  🛑 Стоп-сумма
+                </button>
+              )}
+              {(p.status === 'active' || p.status === 'stopped') && (
+                <button
+                  className="btn btn-outline btn-round"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  onClick={() => handleOpenApproveSupplier(p)}
+                >
+                  ✅ Одобрить поставщика
+                </button>
+              )}
+              {(p.status === 'stopped' || p.status === 'payment') && (
+                <button
+                  className="btn btn-outline btn-round"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+                  onClick={() => handleCreateReceiptTable(p)}
+                >
+                  📊 Создать таблицу
+                </button>
+              )}
+              {(p.status === 'stopped' || p.status === 'payment') && (
+                <button
+                  className="btn btn-outline btn-round"
+                  style={{ fontSize: '0.7rem', padding: '3px 8px', color: 'var(--tg-error)', borderColor: 'var(--tg-error)' }}
+                  onClick={() => handleCloseProcurement(p)}
+                >
+                  🔒 Закрыть закупку
+                </button>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </ContentPanel>
+  );
+
+  const renderShipmentHistory = () => {
+    const completedShipments = myProcurements?.organized?.filter((p) => p.status === 'completed') || [];
+    return (
+      <ContentPanel>
+        {completedShipments.length === 0 ? (
+          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>История отгрузок пуста</p>
+        ) : (
+          completedShipments.map((p) => (
+            <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block' }}>{p.title}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', display: 'block' }}>
+                {p.city} · {formatCurrency(p.current_amount || 0)} · {formatTime(p.updated_at)}
+              </span>
+              <span className="status-badge status-completed" style={{ fontSize: '0.65rem', marginTop: 4, display: 'inline-block' }}>Завершена</span>
+            </div>
+          ))
+        )}
+      </ContentPanel>
+    );
+  };
+
   // ─── Role-specific extra sections ──────────────────────────────────────────
 
   const renderRoleRows = () => {
@@ -1060,10 +1412,10 @@ function Cabinet() {
           <SectionHeader title="Закупки" />
           <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
             <ActionRow icon={<PlusIcon />} label="Создать закупку" onClick={openCreateProcurementModal} />
-            <ActionRow icon={<ShoppingBagIcon />} label="Мои закупки" badge={myProcurements?.organized?.length || 0} onClick={() => toggleSection('myProcurements')} />
+            <ActionRow icon={<ShoppingBagIcon />} label="Открытые закупки" badge={myProcurements?.organized?.filter((p) => p.status === 'active' || p.status === 'draft').length || 0} onClick={() => toggleSection('myProcurements')} />
             {activeSection === 'myProcurements' && renderMyProcurements()}
-            <ActionRow icon={<ShoppingBagIcon />} label="Текущие закупки" badge={activeProcCount} onClick={() => toggleSection('currentPurchases')} />
-            {activeSection === 'currentPurchases' && renderCurrentPurchases()}
+            <ActionRow icon={<ShoppingBagIcon />} label="Закупки в стадии оплаты" badge={paymentProcurements.length} onClick={() => toggleSection('paymentProcurements')} />
+            {activeSection === 'paymentProcurements' && renderPaymentProcurements()}
             <ActionRow icon={<HistoryIcon />} label="История закупок" badge={procurementHistory.length} onClick={() => toggleSection('history')} />
             {activeSection === 'history' && renderPurchaseHistory()}
             <ActionRow icon={<PlusIcon />} label="Создать новость" onClick={() => setNewsOpen(true)} />
@@ -1119,6 +1471,8 @@ function Cabinet() {
                 )}
               </ContentPanel>
             )}
+            <ActionRow icon={<HistoryIcon />} label="История отгрузок" badge={myProcurements?.organized?.filter((p) => p.status === 'completed').length || 0} onClick={() => toggleSection('shipmentHistory')} />
+            {activeSection === 'shipmentHistory' && renderShipmentHistory()}
           </div>
           <SectionHeader title="Коммуникация" />
           <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
@@ -1126,13 +1480,14 @@ function Cabinet() {
             {activeSection === 'messages' && renderMessages()}
             <ActionRow icon={<SearchIcon className={undefined} />} label="Поиск пользователей" onClick={() => toggleSection('userSearch')} />
             {activeSection === 'userSearch' && renderUserSearch()}
-            <ActionRow icon={<PlusIcon />} label="Создать новость" onClick={() => setNewsOpen(true)} />
+            <ActionRow icon={<PlusIcon />} label="Написать в ленту новостей" onClick={() => setNewsOpen(true)} />
           </div>
         </>
       );
     }
 
     // Buyer
+    const unreadInvitations = invitations.filter((inv) => !inv.read).length;
     return (
       <>
         <SectionHeader title="Закупки" />
@@ -1159,18 +1514,25 @@ function Cabinet() {
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>Кол-во: {req.quantity} · {req.city}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)', display: 'block' }}>{formatTime(req.created_at)}</span>
+                    <button
+                      className="btn btn-outline btn-round"
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', marginTop: 4 }}
+                      onClick={() => handleDeleteRequest(req.id)}
+                    >
+                      Удалить из заявки
+                    </button>
                   </div>
                 ))
               )}
             </ContentPanel>
           )}
         </div>
-        <SectionHeader title="Коммуникация" />
+        <SectionHeader title="Мои приглашения и сообщения" />
         <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+          <ActionRow icon={<InvitationIcon />} label="Приглашения в закупки" badge={unreadInvitations} onClick={() => toggleSection('invitations')} />
+          {activeSection === 'invitations' && renderInvitations()}
           <ActionRow icon={<MailIcon />} label="Сообщения" badge={unreadCount} onClick={() => toggleSection('messages')} />
           {activeSection === 'messages' && renderMessages()}
-          <ActionRow icon={<InvitationIcon />} label="Приглашения" onClick={() => toggleSection('invitations')} />
-          {activeSection === 'invitations' && renderInvitations()}
         </div>
       </>
     );
@@ -1223,7 +1585,15 @@ function Cabinet() {
             </span>
             <button onClick={() => setSelectedCarouselCategory(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', fontSize: '1.2rem', padding: 0 }}>×</button>
           </div>
-          <CategoryPageContent category={selectedCarouselCategory} procurements={myProcurements} user={user} />
+          <CategoryPageContent
+            category={selectedCarouselCategory}
+            procurements={myProcurements}
+            user={user}
+            newsFeed={newsFeed}
+            newsFeedLoading={newsFeedLoading}
+            onLoadNewsFeed={handleLoadNewsFeed}
+            navigate={navigate}
+          />
         </div>
       )}
 
@@ -1292,6 +1662,63 @@ function Cabinet() {
       <WithdrawModal isOpen={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
       <CreateRequestModal isOpen={createRequestOpen} onClose={() => setCreateRequestOpen(false)} onSave={handleSaveRequest} />
       <ClosingDocumentsModal isOpen={closingDocsOpen} onClose={() => setClosingDocsOpen(false)} onSave={handleSendClosingDocuments} orderTableId={selectedOrderTableId} />
+
+      {/* Approve Supplier modal */}
+      {approveSupplierOpen && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setApproveSupplierOpen(false)}>
+          <div className="modal" style={{ maxWidth: 380 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Одобрить поставщика</h3>
+              <button className="modal-close" onClick={() => setApproveSupplierOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {approveSupplierProcurement && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-secondary)', margin: 0 }}>
+                  Закупка: <strong>{approveSupplierProcurement.title}</strong>
+                </p>
+              )}
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 4 }}>Поиск поставщика</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: '0.85rem', padding: '7px 12px', width: '100%' }}
+                  placeholder="Имя, компания, email..."
+                  value={supplierSearchQuery}
+                  onChange={(e) => handleSupplierSearch(e.target.value)}
+                  autoFocus
+                />
+                {supplierSearchLoading && <p style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', margin: '4px 0 0' }}>Поиск...</p>}
+                {supplierSearchResults.length > 0 && (
+                  <div style={{ border: '1px solid var(--tg-border)', borderRadius: 8, marginTop: 4, overflow: 'hidden' }}>
+                    {supplierSearchResults.map((s) => (
+                      <div
+                        key={s.id}
+                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--tg-border)', display: 'flex', alignItems: 'center', gap: 8 }}
+                        onClick={() => handleApproveSupplierSubmit(s)}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{s.first_name || ''} {s.last_name || ''}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>{s.email || s.phone || 'Поставщик'}</div>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', background: 'rgba(52,168,240,0.12)', color: '#34A8F0', borderRadius: 4, padding: '2px 6px' }}>
+                          Одобрить
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!supplierSearchLoading && supplierSearchQuery.trim() && supplierSearchResults.length === 0 && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-muted)', marginTop: 4 }}>Поставщики не найдены</p>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn btn-outline btn-round" onClick={() => setApproveSupplierOpen(false)}>Отмена</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add participant modal */}
       {addParticipantOpen && (
