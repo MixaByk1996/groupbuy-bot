@@ -55,12 +55,12 @@ export const useAdminStore = create((set, get) => ({
     try {
       const user = await adminApi.checkAuth();
       set({ adminUser: user, isAuthenticated: true });
-      get().stopLoading();
       return true;
     } catch (error) {
       set({ adminUser: null, isAuthenticated: false });
-      get().stopLoading();
       return false;
+    } finally {
+      get().stopLoading();
     }
   },
 
@@ -70,13 +70,13 @@ export const useAdminStore = create((set, get) => ({
     try {
       const user = await adminApi.login(username, password);
       set({ adminUser: user, isAuthenticated: true });
-      get().stopLoading();
       return true;
     } catch (error) {
       set({ error: error.message });
-      get().stopLoading();
       get().addToast(error.message, 'error');
       return false;
+    } finally {
+      get().stopLoading();
     }
   },
 
