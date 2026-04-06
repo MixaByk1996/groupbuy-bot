@@ -690,6 +690,41 @@ input, textarea, select {
   background-color: var(--tg-bg-primary);
 }
 
+/* LC top bar action buttons (Download App / Change Role) */
+.lc-top-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--tg-border-light);
+  border-radius: 10px;
+  background: var(--tg-bg-secondary);
+  color: var(--tg-text-secondary);
+  font-size: 0.65rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--tg-transition), color var(--tg-transition);
+  min-width: 56px;
+  flex-shrink: 0;
+}
+
+.lc-top-btn:hover {
+  background: var(--tg-bg-tertiary);
+  color: var(--tg-text-primary);
+}
+
+.lc-top-btn--accent {
+  color: #34A8F0;
+  border-color: rgba(52, 168, 240, 0.3);
+  background: rgba(52, 168, 240, 0.06);
+}
+
+.lc-top-btn--accent:hover {
+  background: rgba(52, 168, 240, 0.12);
+}
+
 .cabinet-header {
   display: flex;
   align-items: center;
