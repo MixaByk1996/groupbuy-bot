@@ -222,8 +222,22 @@ class ProcurementViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):
-        """Update procurement status"""
+        """Update procurement status - only the organizer can change status"""
         procurement = self.get_object()
+        user_id = request.data.get('user_id')
+
+        if not user_id:
+            return Response(
+                {'error': 'user_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if procurement.organizer_id != int(user_id):
+            return Response(
+                {'error': 'Only the organizer can change procurement status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         new_status = request.data.get('status')
 
         if new_status not in dict(Procurement.Status.choices):

@@ -110,10 +110,8 @@ function Cabinet() {
   ]);
   const [newSubscription, setNewSubscription] = useState('');
 
-  // Messages/Invitations: inbox list
-  const [messages, setMessages] = useState([
-    { id: 1, from: 'Система', text: 'Добро пожаловать на платформу!', date: new Date(Date.now() - 86400000).toISOString(), read: true },
-  ]);
+  // Messages/Invitations: notifications from API
+  const [messages, setMessages] = useState([]);
 
   // Pending procurements (supplier: awaiting shipment confirmation)
   const [pendingItems, setPendingItems] = useState([]);
@@ -128,10 +126,22 @@ function Cabinet() {
     if (!user) return;
     const loadStats = async () => {
       try {
-        const [balance, procurements] = await Promise.all([
+        const [balance, procurements, notifications] = await Promise.all([
           api.getUserBalance(user.id).catch(() => null),
           api.getUserProcurements(user.id).catch(() => null),
+          api.getNotifications(user.id).catch(() => null),
         ]);
+
+        if (notifications) {
+          const notifList = notifications.results || notifications;
+          setMessages(notifList.map((n) => ({
+            id: n.id,
+            from: n.notification_type === 'system' ? 'Система' : 'Администратор',
+            text: n.title ? `${n.title}: ${n.message}` : n.message,
+            date: n.created_at,
+            read: n.is_read,
+          })));
+        }
 
         let organized = [];
         let participating = [];
@@ -204,6 +214,28 @@ function Cabinet() {
     addToast('Запрос удалён', 'info');
   };
 
+  const handleProcurementStatusChange = async (procurementId, newStatus) => {
+    try {
+      await api.updateProcurementStatus(procurementId, newStatus, user.id);
+      // Update local state to reflect new status immediately
+      setMyProcurements((prev) => {
+        if (!prev) return prev;
+        const updateList = (list) =>
+          list.map((p) => p.id === procurementId ? { ...p, status: newStatus } : p);
+        return { organized: updateList(prev.organized), participating: updateList(prev.participating) };
+      });
+      setPaymentProcurements((prev) =>
+        prev.map((p) => p.id === procurementId ? { ...p, status: newStatus } : p)
+      );
+      setProcurementHistory((prev) =>
+        prev.map((p) => p.id === procurementId ? { ...p, status: newStatus } : p)
+      );
+      addToast('Статус закупки обновлён', 'success');
+    } catch (error) {
+      addToast(error.message || 'Ошибка при изменении статуса', 'error');
+    }
+  };
+
   const handleSendClosingDocuments = async (data) => {
     addToast('Закрывающие документы отправлены покупателям', 'success');
   };
@@ -225,7 +257,12 @@ function Cabinet() {
     addToast('Подписка удалена', 'info');
   };
 
-  const handleMarkMessageRead = (id) => {
+  const handleMarkMessageRead = async (id) => {
+    try {
+      await api.markNotificationRead(id);
+    } catch {
+      // ignore read errors silently
+    }
     setMessages((prev) => prev.map((m) => m.id === id ? { ...m, read: true } : m));
   };
 
@@ -548,6 +585,67 @@ function Cabinet() {
             <span className="cabinet-menu-text">Делегаты</span>
           </div>
 
+          {/* Мои закупки — управление статусами */}
+          <div
+            className="cabinet-menu-item"
+            onClick={() => setActiveSection(activeSection === 'myOrgProcurements' ? null : 'myOrgProcurements')}
+          >
+            <ShoppingBagIcon />
+            <span className="cabinet-menu-text">Мои закупки</span>
+            {(myProcurements?.organized?.length || 0) > 0 && (
+              <span style={{ background: 'var(--primary-color,#3390ec)', color:'#fff', borderRadius:'1rem', fontSize:'0.7rem', padding:'0 0.4rem', minWidth:'1.2rem', textAlign:'center' }}>{myProcurements.organized.length}</span>
+            )}
+          </div>
+          {activeSection === 'myOrgProcurements' && (
+            <div style={{ padding: '0 1rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {(myProcurements?.organized?.length || 0) === 0 ? (
+                <p className="text-muted" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>Нет закупок</p>
+              ) : (
+                myProcurements.organized.map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: 'var(--bg-secondary, #f0f2f5)',
+                      borderRadius: '0.5rem',
+                      padding: '0.6rem 0.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.15rem',
+                    }}
+                  >
+                    <span
+                      style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
+                      onClick={() => navigate(`/chat/${p.id}`)}
+                    >
+                      {p.title}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {p.city} · {p.participant_count || 0} участн. · {formatCurrency(p.current_amount || 0)}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                      <select
+                        value={p.status}
+                        onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
+                        style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', borderRadius: '0.35rem', border: '1px solid var(--border-color,#e0e4e8)', background: 'var(--bg-primary,#fff)', cursor: 'pointer' }}
+                      >
+                        {[
+                          { value: 'draft', label: 'Черновик' },
+                          { value: 'active', label: 'Активная' },
+                          { value: 'stopped', label: 'Остановлена' },
+                          { value: 'payment', label: 'Оплата' },
+                          { value: 'completed', label: 'Завершена' },
+                          { value: 'cancelled', label: 'Отменена' },
+                        ].map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
           {/* Закупки в стадии оплаты */}
           <div
             className="cabinet-menu-item"
@@ -571,20 +669,38 @@ function Cabinet() {
                       background: 'var(--bg-secondary, #f0f2f5)',
                       borderRadius: '0.5rem',
                       padding: '0.6rem 0.75rem',
-                      cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.15rem',
                     }}
-                    onClick={() => navigate(`/chat/${p.id}`)}
                   >
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.title}</span>
+                    <span
+                      style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
+                      onClick={() => navigate(`/chat/${p.id}`)}
+                    >
+                      {p.title}
+                    </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #8e99a4)' }}>
                       Остановлена: {formatTime(p.updated_at)} · {p.participant_count || 0} участн.
                     </span>
-                    <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.7rem', alignSelf: 'flex-start' }}>
-                      {getStatusText(p.status)}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                      <select
+                        value={p.status}
+                        onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
+                        style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', borderRadius: '0.35rem', border: '1px solid var(--border-color,#e0e4e8)', background: 'var(--bg-primary,#fff)', cursor: 'pointer' }}
+                      >
+                        {[
+                          { value: 'draft', label: 'Черновик' },
+                          { value: 'active', label: 'Активная' },
+                          { value: 'stopped', label: 'Остановлена' },
+                          { value: 'payment', label: 'Оплата' },
+                          { value: 'completed', label: 'Завершена' },
+                          { value: 'cancelled', label: 'Отменена' },
+                        ].map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ))
               )}
@@ -792,9 +908,28 @@ function Cabinet() {
               {p.city} · {formatCurrency(p.current_amount || 0)} / {formatCurrency(p.target_amount || 0)}
             </span>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.7rem' }}>
-                {getStatusText(p.status)}
-              </span>
+              {user.role === 'organizer' && p.organizer === user.id ? (
+                <select
+                  value={p.status}
+                  onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
+                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', borderRadius: '0.35rem', border: '1px solid var(--border-color,#e0e4e8)', background: 'var(--bg-primary,#fff)', cursor: 'pointer' }}
+                >
+                  {[
+                    { value: 'draft', label: 'Черновик' },
+                    { value: 'active', label: 'Активная' },
+                    { value: 'stopped', label: 'Остановлена' },
+                    { value: 'payment', label: 'Оплата' },
+                    { value: 'completed', label: 'Завершена' },
+                    { value: 'cancelled', label: 'Отменена' },
+                  ].map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.7rem' }}>
+                  {getStatusText(p.status)}
+                </span>
+              )}
               <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                 {formatTime(p.updated_at)}
               </span>
