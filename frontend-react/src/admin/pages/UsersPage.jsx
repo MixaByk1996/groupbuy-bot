@@ -33,7 +33,8 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers({ ...filters, page });
-  }, [loadUsers, filters, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page]);
 
   const handleFilterChange = (key, value) => {
     setFilters({ ...filters, [key]: value });

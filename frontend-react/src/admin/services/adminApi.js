@@ -17,6 +17,10 @@ function buildQuery(params) {
   return new URLSearchParams(filtered).toString();
 }
 
+// Request deduplication: prevent multiple identical GET requests from firing concurrently.
+// Maps URL -> Promise so that concurrent calls to the same endpoint share one in-flight request.
+const inflightRequests = new Map();
+
 async function request(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
   const method = (options.method || 'GET').toUpperCase();
@@ -30,42 +34,68 @@ async function request(endpoint, options = {}) {
     headers['X-CSRFToken'] = getCsrfToken();
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  // Deduplicate concurrent GET requests to the same URL
+  if (method === 'GET') {
+    const existing = inflightRequests.get(url);
+    if (existing) {
+      return existing;
+    }
+  }
 
-  let response;
-  try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // Include cookies for session auth
-      signal: controller.signal,
+  const controller = options.signal
+    ? undefined // caller provided their own signal
+    : new AbortController();
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), 15000)
+    : null;
+  const signal = options.signal || (controller ? controller.signal : undefined);
+
+  const fetchPromise = (async () => {
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        method,
+        headers,
+        credentials: 'include', // Include cookies for session auth
+        signal,
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Превышено время ожидания ответа от сервера');
+      }
+      throw err;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    if (response.status === 401) {
+      const error = await response.json().catch(() => ({}));
+      // Only redirect to login when not already on the auth endpoint
+      // (avoids redirect loop when login credentials are wrong)
+      if (endpoint !== '/auth/') {
+        window.location.href = '/admin-panel/login';
+      }
+      throw new Error(error.detail || 'Unauthorized');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  })();
+
+  // Track in-flight GET requests for deduplication
+  if (method === 'GET') {
+    inflightRequests.set(url, fetchPromise);
+    fetchPromise.finally(() => {
+      inflightRequests.delete(url);
     });
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error('Превышено время ожидания ответа от сервера');
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
   }
 
-  if (response.status === 401) {
-    const error = await response.json().catch(() => ({}));
-    // Only redirect to login when not already on the auth endpoint
-    // (avoids redirect loop when login credentials are wrong)
-    if (endpoint !== '/auth/') {
-      window.location.href = '/admin-panel/login';
-    }
-    throw new Error(error.detail || 'Unauthorized');
-  }
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`);
-  }
-
-  return response.json();
+  return fetchPromise;
 }
 
 export const adminApi = {

@@ -52,7 +52,8 @@ export default function EscrowPage() {
   useEffect(() => {
     loadEscrows({ ...filters, page });
     loadStats();
-  }, [loadEscrows, loadStats, filters, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page]);
 
   const handleFilterChange = (key, value) => {
     setFilters({ ...filters, [key]: value });

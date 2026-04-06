@@ -20,7 +20,8 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEdit = (category) => {
     setFormData({

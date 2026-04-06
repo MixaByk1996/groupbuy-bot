@@ -22,7 +22,8 @@ export default function MessagesPage() {
 
   useEffect(() => {
     loadMessages({ ...filters, page });
-  }, [loadMessages, filters, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page]);
 
   const handleFilterChange = (key, value) => {
     setFilters({ ...filters, [key]: value });

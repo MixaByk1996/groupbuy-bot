@@ -56,7 +56,8 @@ export default function ReputationPage() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadStats = useCallback(async () => {
     try {
