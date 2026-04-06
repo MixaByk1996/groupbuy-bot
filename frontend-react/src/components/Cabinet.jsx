@@ -84,7 +84,7 @@ function TopActionButtons({ buttons }) {
 
 function Cabinet() {
   const navigate = useNavigate();
-  const { user, openDepositModal, openCreateProcurementModal, logout, addToast } = useStore();
+  const { user, openDepositModal, openCreateProcurementModal, logout, addToast, openLoginModal } = useStore();
   const [userStats, setUserStats] = useState(null);
   const [companyCardOpen, setCompanyCardOpen] = useState(false);
   const [priceListOpen, setPriceListOpen] = useState(false);
@@ -324,8 +324,11 @@ function Cabinet() {
 
   if (!user) {
     return (
-      <div className="cabinet flex flex-col items-center justify-center" style={{ flex: 1 }}>
+      <div className="cabinet flex flex-col items-center justify-center" style={{ flex: 1, gap: '1rem' }}>
         <p className="text-muted">Войдите для доступа к личному кабинету</p>
+        <button className="btn btn-primary" onClick={openLoginModal}>
+          Войти / Зарегистрироваться
+        </button>
       </div>
     );
   }
