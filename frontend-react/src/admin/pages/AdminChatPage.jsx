@@ -73,7 +73,7 @@ export default function AdminChatPage() {
             type: 'notification',
             text: n.message || n.title || '',
             title: n.title || '',
-            isAdmin: n.notification_type === 'system',
+            isAdmin: n.notification_type === 'admin_message',
             created_at: n.created_at,
             is_read: n.is_read,
           });

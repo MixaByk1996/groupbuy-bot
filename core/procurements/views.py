@@ -10,7 +10,7 @@ from .models import Category, Procurement, Participant, SupplierVote, VoteCloseR
 from .serializers import (
     CategorySerializer, ProcurementListSerializer, ProcurementDetailSerializer,
     ProcurementCreateSerializer, ParticipantSerializer, JoinProcurementSerializer,
-    SupplierVoteSerializer, CastVoteSerializer,
+    SupplierVoteSerializer, CastVoteSerializer, AddParticipantSerializer,
 )
 
 
@@ -144,6 +144,54 @@ class ProcurementViewSet(viewsets.ModelViewSet):
         return Response(
             ParticipantSerializer(participant).data,
             status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['post'])
+    def add_participant(self, request, pk=None):
+        """Add another user to a procurement (organizer only).
+
+        The organizer can invite/add another user by specifying user_id,
+        quantity, and amount.  The new participant starts in PENDING status.
+        """
+        procurement = self.get_object()
+
+        serializer = AddParticipantSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        organizer_id = serializer.validated_data['organizer_id']
+        user_id = serializer.validated_data['user_id']
+
+        if procurement.organizer_id != int(organizer_id):
+            return Response(
+                {'error': 'Only the organizer can add participants to this procurement'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not procurement.can_join:
+            return Response(
+                {'error': 'Cannot add participants to this procurement'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if procurement.participants.filter(user_id=user_id, is_active=True).exists():
+            return Response(
+                {'error': 'User is already participating in this procurement'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        participant = Participant.objects.create(
+            procurement=procurement,
+            user_id=user_id,
+            quantity=serializer.validated_data['quantity'],
+            amount=serializer.validated_data['amount'],
+            notes=serializer.validated_data.get('notes', ''),
+            status=Participant.Status.PENDING,
+        )
+
+        return Response(
+            ParticipantSerializer(participant).data,
+            status=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=['post'])

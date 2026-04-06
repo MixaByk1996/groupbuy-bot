@@ -105,6 +105,28 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
+    def search(self, request):
+        """Search users by name, username, email, or phone (for personal cabinet user search)."""
+        query = request.query_params.get('q', '').strip()
+        if not query:
+            return Response(
+                {'error': 'q (search query) is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.db.models import Q
+        users = self.get_queryset().filter(
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(username__icontains=query) |
+            Q(email__icontains=query) |
+            Q(phone__icontains=query)
+        )[:20]
+
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
     def check_exists(self, request):
         """Check if user exists by platform and platform_user_id"""
         platform = request.query_params.get('platform', 'telegram')

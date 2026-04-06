@@ -765,7 +765,7 @@ class AdminChatMessageView(APIView):
 
         notification = Notification.objects.create(
             user=user,
-            notification_type='system',
+            notification_type='admin_message',
             title='Сообщение от администратора',
             message=text
         )
