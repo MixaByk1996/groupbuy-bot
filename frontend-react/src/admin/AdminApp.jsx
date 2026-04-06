@@ -22,20 +22,24 @@ import EscrowPage from './pages/EscrowPage';
 import SearchAnalyticsPage from './pages/SearchAnalyticsPage';
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, checkAuth, isLoading } = useAdminStore();
+  const { isAuthenticated, checkAuth } = useAdminStore();
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
     checkAuth().then((isAuth) => {
+      if (cancelled) return;
       if (!isAuth) {
         navigate('/admin-panel/login');
       }
       setChecking(false);
     });
-  }, [checkAuth, navigate]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (checking || isLoading) {
+  if (checking) {
     return (
       <div style={{
         display: 'flex',
