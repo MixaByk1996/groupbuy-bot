@@ -35,6 +35,9 @@ export const api = {
   getUserByEmail: (email) =>
     request(`/users/by_email/?email=${encodeURIComponent(email)}`),
 
+  searchUsers: (query) =>
+    request(`/users/search/?q=${encodeURIComponent(query)}`),
+
   getUserByPhone: (phone) =>
     request(`/users/by_phone/?phone=${encodeURIComponent(phone)}`),
 
@@ -68,6 +71,12 @@ export const api = {
 
   joinProcurement: (id, data) =>
     request(`/procurements/${id}/join/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  addParticipant: (id, data) =>
+    request(`/procurements/${id}/add_participant/`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),

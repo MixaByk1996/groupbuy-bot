@@ -111,3 +111,12 @@ class JoinProcurementSerializer(serializers.Serializer):
     quantity = serializers.DecimalField(max_digits=10, decimal_places=2, default=1)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class AddParticipantSerializer(serializers.Serializer):
+    """Serializer for adding another user to a procurement (organizer action)"""
+    user_id = serializers.IntegerField()
+    organizer_id = serializers.IntegerField()
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2, default=1)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    notes = serializers.CharField(required=False, allow_blank=True)

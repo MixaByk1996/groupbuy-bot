@@ -75,6 +75,7 @@ class Notification(models.Model):
         PAYMENT_RECEIVED = 'payment_received', 'Payment Received'
         PROCUREMENT_COMPLETED = 'procurement_completed', 'Procurement Completed'
         SYSTEM = 'system', 'System'
+        ADMIN_MESSAGE = 'admin_message', 'Admin Message'
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     notification_type = models.CharField(max_length=30, choices=NotificationType.choices)

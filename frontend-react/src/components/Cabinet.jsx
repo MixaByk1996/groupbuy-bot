@@ -102,6 +102,23 @@ function Cabinet() {
   const [orderTables, setOrderTables] = useState([]);
   const [shipmentHistory, setShipmentHistory] = useState([]);
 
+  // User search state
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [userSearchLoading, setUserSearchLoading] = useState(false);
+  const userSearchTimeout = React.useRef(null);
+
+  // Add participant modal state
+  const [addParticipantOpen, setAddParticipantOpen] = useState(false);
+  const [addParticipantProcurement, setAddParticipantProcurement] = useState(null);
+  const [addParticipantUserQuery, setAddParticipantUserQuery] = useState('');
+  const [addParticipantResults, setAddParticipantResults] = useState([]);
+  const [addParticipantLoading, setAddParticipantLoading] = useState(false);
+  const [addParticipantSelected, setAddParticipantSelected] = useState(null);
+  const [addParticipantAmount, setAddParticipantAmount] = useState('');
+  const [addParticipantQuantity, setAddParticipantQuantity] = useState('1');
+  const addParticipantSearchTimeout = React.useRef(null);
+
   // Subscriptions: list of category/organizer subscriptions
   const [subscriptions, setSubscriptions] = useState([
     { id: 1, type: 'category', name: 'Биржа', active: true },
@@ -302,6 +319,73 @@ function Cabinet() {
     // All slider categories navigate to home — chat-related ones show all procurements,
     // others pre-fill the sidebar search with the category name.
     navigate(CHAT_SLIDER_ITEMS.has(category) ? '/' : `/?category=${encodeURIComponent(category)}`);
+  };
+
+  const handleOpenAddParticipant = (procurement) => {
+    setAddParticipantProcurement(procurement);
+    setAddParticipantOpen(true);
+    setAddParticipantUserQuery('');
+    setAddParticipantResults([]);
+    setAddParticipantSelected(null);
+    setAddParticipantAmount('');
+    setAddParticipantQuantity('1');
+  };
+
+  const handleAddParticipantSearch = (query) => {
+    setAddParticipantUserQuery(query);
+    setAddParticipantSelected(null);
+    if (addParticipantSearchTimeout.current) clearTimeout(addParticipantSearchTimeout.current);
+    if (!query.trim()) {
+      setAddParticipantResults([]);
+      return;
+    }
+    addParticipantSearchTimeout.current = setTimeout(async () => {
+      setAddParticipantLoading(true);
+      try {
+        const results = await api.searchUsers(query);
+        setAddParticipantResults(Array.isArray(results) ? results : (results.results || []));
+      } catch {
+        setAddParticipantResults([]);
+      } finally {
+        setAddParticipantLoading(false);
+      }
+    }, 400);
+  };
+
+  const handleAddParticipantSubmit = async () => {
+    if (!addParticipantSelected || !addParticipantAmount || !addParticipantProcurement) return;
+    try {
+      await api.addParticipant(addParticipantProcurement.id, {
+        organizer_id: user.id,
+        user_id: addParticipantSelected.id,
+        quantity: parseFloat(addParticipantQuantity) || 1,
+        amount: parseFloat(addParticipantAmount),
+      });
+      addToast(`Пользователь ${addParticipantSelected.first_name || ''} добавлен в закупку`, 'success');
+      setAddParticipantOpen(false);
+    } catch (err) {
+      addToast(err.message || 'Ошибка добавления участника', 'error');
+    }
+  };
+
+  const handleUserSearch = (query) => {
+    setUserSearchQuery(query);
+    if (userSearchTimeout.current) clearTimeout(userSearchTimeout.current);
+    if (!query.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+    userSearchTimeout.current = setTimeout(async () => {
+      setUserSearchLoading(true);
+      try {
+        const results = await api.searchUsers(query);
+        setUserSearchResults(Array.isArray(results) ? results : (results.results || []));
+      } catch {
+        setUserSearchResults([]);
+      } finally {
+        setUserSearchLoading(false);
+      }
+    }, 400);
   };
 
   const handleRoleSwitch = async (newRole) => {
@@ -507,6 +591,22 @@ function Cabinet() {
           )}
         </div>
         {activeSection === 'supplierMessages' && renderMessages('Приглашения и сообщения')}
+        <div
+          className="cabinet-menu-item"
+          onClick={() => setActiveSection(activeSection === 'supplierChatList' ? null : 'supplierChatList')}
+        >
+          <RequestsIcon />
+          <span className="cabinet-menu-text">Чаты закупок</span>
+        </div>
+        {activeSection === 'supplierChatList' && renderChatList()}
+        <div
+          className="cabinet-menu-item"
+          onClick={() => setActiveSection(activeSection === 'supplierUserSearch' ? null : 'supplierUserSearch')}
+        >
+          <SearchIcon className="cabinet-menu-icon" />
+          <span className="cabinet-menu-text">Поиск пользователей</span>
+        </div>
+        {activeSection === 'supplierUserSearch' && renderUserSearch()}
       </div>
     </>
   );
@@ -573,16 +673,27 @@ function Cabinet() {
             <SearchIcon className="cabinet-menu-icon" />
             <span className="cabinet-menu-text">Поиск</span>
           </div>
-          <div className="cabinet-menu-item" onClick={() => {
-            if (activeProcurements.length > 0) {
-              navigate(`/chat/${activeProcurements[0].id}`);
-            } else {
-              addToast('Нет активных чатов закупок', 'info');
-            }
-          }}>
+          <div
+            className="cabinet-menu-item"
+            onClick={() => setActiveSection(activeSection === 'chatList' ? null : 'chatList')}
+          >
             <RequestsIcon />
             <span className="cabinet-menu-text">Чаты</span>
+            {(myProcurements?.organized?.filter((p) => ['active', 'stopped', 'payment'].includes(p.status)).length || 0) > 0 && (
+              <span style={{ background: 'var(--primary-color,#3390ec)', color: '#fff', borderRadius: '1rem', fontSize: '0.7rem', padding: '0 0.4rem', minWidth: '1.2rem', textAlign: 'center' }}>
+                {myProcurements.organized.filter((p) => ['active', 'stopped', 'payment'].includes(p.status)).length}
+              </span>
+            )}
           </div>
+          {activeSection === 'chatList' && renderChatList()}
+          <div
+            className="cabinet-menu-item"
+            onClick={() => setActiveSection(activeSection === 'userSearch' ? null : 'userSearch')}
+          >
+            <SearchIcon className="cabinet-menu-icon" />
+            <span className="cabinet-menu-text">Поиск пользователей</span>
+          </div>
+          {activeSection === 'userSearch' && renderUserSearch()}
           <div className="cabinet-menu-item" onClick={() => navigate('/')}>
             <RequestsIcon />
             <span className="cabinet-menu-text">Делегаты</span>
@@ -625,7 +736,7 @@ function Cabinet() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       {p.city} · {p.participant_count || 0} участн. · {formatCurrency(p.current_amount || 0)}
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
                       <select
                         value={p.status}
                         onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
@@ -642,6 +753,15 @@ function Cabinet() {
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                      {p.status === 'active' && (
+                        <button
+                          className="btn btn-outline btn-round"
+                          style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}
+                          onClick={() => handleOpenAddParticipant(p)}
+                        >
+                          + Добавить участника
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -765,14 +885,10 @@ function Cabinet() {
           <PlusIcon />
           <span className="cabinet-menu-text">Создать запрос</span>
         </div>
-        <div className="cabinet-menu-item" onClick={() => {
-          const procList = myProcurements?.participating || [];
-          if (procList.length > 0) {
-            navigate(`/chat/${procList[0].id}`);
-          } else {
-            addToast('Вы не участвуете ни в одной закупке', 'info');
-          }
-        }}>
+        <div
+          className="cabinet-menu-item"
+          onClick={() => setActiveSection(activeSection === 'buyerChatList' ? null : 'buyerChatList')}
+        >
           <ShoppingBagIcon />
           <span className="cabinet-menu-text">Текущие закупки</span>
           {myProcurements?.participating?.filter((p) => ['active', 'stopped', 'payment'].includes(p.status)).length > 0 && (
@@ -781,6 +897,7 @@ function Cabinet() {
             </span>
           )}
         </div>
+        {activeSection === 'buyerChatList' && renderChatList()}
         <div
           className="cabinet-menu-item"
           onClick={() => setActiveSection(activeSection === 'buyerSubscriptions' ? null : 'buyerSubscriptions')}
@@ -819,8 +936,16 @@ function Cabinet() {
 
         <div className="cabinet-menu-item" onClick={() => navigate('/')}>
           <SearchIcon className="cabinet-menu-icon" />
-          <span className="cabinet-menu-text">Поиск</span>
+          <span className="cabinet-menu-text">Поиск закупок</span>
         </div>
+        <div
+          className="cabinet-menu-item"
+          onClick={() => setActiveSection(activeSection === 'buyerUserSearch' ? null : 'buyerUserSearch')}
+        >
+          <SearchIcon className="cabinet-menu-icon" />
+          <span className="cabinet-menu-text">Поиск пользователей</span>
+        </div>
+        {activeSection === 'buyerUserSearch' && renderUserSearch()}
 
         {/* Категории */}
         {['Жилье', 'Авто', 'Стройка', 'Движимость', 'Фермерские продукты', 'Деликатесы', 'Памперсы', 'Средства по уходу'].map((cat) => (
@@ -1109,6 +1234,122 @@ function Cabinet() {
     </div>
   );
 
+  const renderUserSearch = () => (
+    <div style={{ padding: '0 1rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <input
+        type="text"
+        className="form-input"
+        style={{ fontSize: '0.85rem', padding: '0.45rem 0.75rem' }}
+        placeholder="Имя, email, телефон..."
+        value={userSearchQuery}
+        onChange={(e) => handleUserSearch(e.target.value)}
+        autoFocus
+      />
+      {userSearchLoading && (
+        <p className="text-muted" style={{ fontSize: '0.8rem', padding: '0.25rem 0' }}>Поиск...</p>
+      )}
+      {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && (
+        <p className="text-muted" style={{ fontSize: '0.8rem', padding: '0.25rem 0' }}>Пользователи не найдены</p>
+      )}
+      {userSearchResults.map((u) => (
+        <div
+          key={u.id}
+          style={{
+            background: 'var(--bg-secondary, #f0f2f5)',
+            borderRadius: '0.5rem',
+            padding: '0.6rem 0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'var(--primary-color, #3390ec)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {getInitials(u.first_name, u.last_name)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {u.first_name || ''} {u.last_name || ''}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {u.username ? `@${u.username}` : u.email || u.phone || getRoleText(u.role)}
+            </div>
+          </div>
+          <span style={{
+            fontSize: '0.65rem',
+            background: 'rgba(51,144,236,0.1)',
+            color: 'var(--primary-color,#3390ec)',
+            borderRadius: '0.25rem',
+            padding: '0.1rem 0.4rem',
+            flexShrink: 0,
+          }}>
+            {getRoleText(u.role)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderChatList = () => {
+    const allProcurements = [
+      ...(myProcurements?.organized || []),
+      ...(myProcurements?.participating || []),
+    ].filter((p) => ['active', 'stopped', 'payment'].includes(p.status));
+
+    if (allProcurements.length === 0) {
+      return (
+        <div style={{ padding: '0 1rem 0.5rem' }}>
+          <p className="text-muted" style={{ fontSize: '0.85rem', padding: '0.5rem 0' }}>Нет активных чатов</p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ padding: '0 1rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        {allProcurements.map((p) => (
+          <div
+            key={p.id}
+            onClick={() => navigate(`/chat/${p.id}`)}
+            style={{
+              background: 'var(--bg-secondary, #f0f2f5)',
+              borderRadius: '0.5rem',
+              padding: '0.6rem 0.75rem',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.15rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.875rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.title}
+              </span>
+              <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.65rem', flexShrink: 0 }}>
+                {getStatusText(p.status)}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {p.city} · {p.participant_count || 0} участн.
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderRoleContent = () => {
     if (user.role === 'supplier') return renderSupplierCabinet();
     if (user.role === 'organizer') return renderOrganizerCabinet();
@@ -1262,6 +1503,104 @@ function Cabinet() {
         onSave={handleSendClosingDocuments}
         orderTableId={selectedOrderTableId}
       />
+
+      {/* Add participant modal */}
+      {addParticipantOpen && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setAddParticipantOpen(false)}>
+          <div className="modal" style={{ maxWidth: '380px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Добавить участника в закупку</h3>
+              <button className="modal-close" onClick={() => setAddParticipantOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {addParticipantProcurement && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Закупка: <strong>{addParticipantProcurement.title}</strong>
+                </p>
+              )}
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                  Поиск пользователя
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: '0.85rem', padding: '0.45rem 0.75rem', width: '100%' }}
+                  placeholder="Имя, email, телефон..."
+                  value={addParticipantUserQuery}
+                  onChange={(e) => handleAddParticipantSearch(e.target.value)}
+                  autoFocus
+                />
+                {addParticipantLoading && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>Поиск...</p>
+                )}
+                {addParticipantResults.length > 0 && !addParticipantSelected && (
+                  <div style={{ border: '1px solid var(--border-color,#e0e4e8)', borderRadius: '0.5rem', marginTop: '0.25rem', overflow: 'hidden' }}>
+                    {addParticipantResults.map((u) => (
+                      <div
+                        key={u.id}
+                        style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color,#e0e4e8)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        onClick={() => {
+                          setAddParticipantSelected(u);
+                          setAddParticipantUserQuery(`${u.first_name || ''} ${u.last_name || ''}`.trim());
+                          setAddParticipantResults([]);
+                        }}
+                      >
+                        <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{u.first_name || ''} {u.last_name || ''}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>{u.email || u.phone || getRoleText(u.role)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {addParticipantSelected && (
+                  <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--success-color,#4caf50)' }}>
+                    ✓ Выбран: {addParticipantSelected.first_name} {addParticipantSelected.last_name || ''} ({addParticipantSelected.email || addParticipantSelected.phone || `ID ${addParticipantSelected.id}`})
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Количество</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    style={{ fontSize: '0.85rem', padding: '0.45rem 0.75rem', width: '100%' }}
+                    min="0.01"
+                    step="0.01"
+                    value={addParticipantQuantity}
+                    onChange={(e) => setAddParticipantQuantity(e.target.value)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Сумма (₽)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    style={{ fontSize: '0.85rem', padding: '0.45rem 0.75rem', width: '100%' }}
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={addParticipantAmount}
+                    onChange={(e) => setAddParticipantAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button className="btn btn-outline btn-round" onClick={() => setAddParticipantOpen(false)}>
+                  Отмена
+                </button>
+                <button
+                  className="btn btn-primary btn-round"
+                  disabled={!addParticipantSelected || !addParticipantAmount}
+                  onClick={handleAddParticipantSubmit}
+                >
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
