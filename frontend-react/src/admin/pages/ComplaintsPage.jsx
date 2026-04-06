@@ -56,7 +56,8 @@ export default function ComplaintsPage() {
   useEffect(() => {
     loadComplaints({ ...filters, page });
     loadStats();
-  }, [loadComplaints, loadStats, filters, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page]);
 
   const handleFilterChange = (key, value) => {
     setFilters({ ...filters, [key]: value });

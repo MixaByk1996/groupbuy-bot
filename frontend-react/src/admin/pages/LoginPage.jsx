@@ -14,12 +14,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     checkAuth().then((isAuth) => {
-      if (isAuth) {
+      if (!cancelled && isAuth) {
         navigate('/admin-panel');
       }
     });
-  }, [checkAuth, navigate]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

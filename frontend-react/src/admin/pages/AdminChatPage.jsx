@@ -48,7 +48,8 @@ export default function AdminChatPage() {
 
   useEffect(() => {
     loadUsers({ page_size: 100 });
-  }, [loadUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadMessages = useCallback(async (userId) => {
     if (!userId) return;
@@ -102,9 +103,19 @@ export default function AdminChatPage() {
     }
   }, [addToast]);
 
+  const loadMessagesRef = useRef(loadMessages);
+  loadMessagesRef.current = loadMessages;
+
   useEffect(() => {
     if (!selectedUser) return;
-    loadMessages(selectedUser.id);
+    let cancelled = false;
+    const userId = selectedUser.id;
+
+    const load = () => {
+      if (!cancelled) loadMessagesRef.current(userId);
+    };
+
+    load();
 
     // Poll for new messages every 30 seconds, only when the tab is visible
     const POLL_INTERVAL = 30_000;
@@ -113,7 +124,7 @@ export default function AdminChatPage() {
       if (!pollRef.current) {
         pollRef.current = setInterval(() => {
           if (!document.hidden) {
-            loadMessages(selectedUser.id);
+            load();
           }
         }, POLL_INTERVAL);
       }
@@ -130,7 +141,7 @@ export default function AdminChatPage() {
       if (document.hidden) {
         stopPolling();
       } else {
-        loadMessages(selectedUser.id);
+        load();
         startPolling();
       }
     };
@@ -139,10 +150,11 @@ export default function AdminChatPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      cancelled = true;
       stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [selectedUser, loadMessages]);
+  }, [selectedUser]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

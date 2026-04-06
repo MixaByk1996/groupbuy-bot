@@ -33,7 +33,8 @@ export default function PaymentsPage() {
     } else {
       loadTransactions({ ...filters, page });
     }
-  }, [loadPayments, loadTransactions, filters, page, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page, activeTab]);
 
   const handleFilterChange = (key, value) => {
     setFilters({ ...filters, [key]: value });

@@ -3,7 +3,7 @@
  * Advanced analytics with date filtering, time-series charts,
  * top categories/organizers, conversion funnel, and CSV export
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAdminStore } from '../store/adminStore';
 import AdminLayout from '../components/AdminLayout';
 import BarChart from '../components/BarChart';
@@ -71,10 +71,15 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState(getDefaultDateTo);
   const [period, setPeriod] = useState('day');
 
+  const loadDashboardStatsRef = useRef(loadDashboardStats);
+  loadDashboardStatsRef.current = loadDashboardStats;
+  const loadAnalyticsRef = useRef(loadAnalytics);
+  loadAnalyticsRef.current = loadAnalytics;
+
   const fetchData = useCallback(() => {
-    loadDashboardStats();
-    loadAnalytics({ date_from: dateFrom, date_to: dateTo, period });
-  }, [loadDashboardStats, loadAnalytics, dateFrom, dateTo, period]);
+    loadDashboardStatsRef.current();
+    loadAnalyticsRef.current({ date_from: dateFrom, date_to: dateTo, period });
+  }, [dateFrom, dateTo, period]);
 
   useEffect(() => {
     fetchData();

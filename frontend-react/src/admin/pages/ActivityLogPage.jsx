@@ -46,13 +46,13 @@ export default function ActivityLogPage() {
     setLoading(true);
     try {
       const [usersRes, paymentsRes, transactionsRes, messagesRes, notificationsRes] =
-        await Promise.all([
+        await Promise.allSettled([
           adminApi.getUsers({ page_size: 20, ordering: '-created_at' }),
           adminApi.getPayments({ page_size: 20 }),
           adminApi.getTransactions({ page_size: 20 }),
           adminApi.getMessages({ page_size: 20 }),
           adminApi.getNotifications({ page_size: 20 }),
-        ]);
+        ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { results: [] }));
 
       const allEvents = [];
 
@@ -134,11 +134,13 @@ export default function ActivityLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadActivity();
-  }, [loadActivity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredEvents = filter === 'all' ? events : events.filter((e) => e.type === filter);
 

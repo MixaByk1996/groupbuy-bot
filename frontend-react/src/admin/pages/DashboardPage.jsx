@@ -1,7 +1,7 @@
 /**
  * Admin Dashboard Page with Analytics Charts
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAdminStore } from '../store/adminStore';
 import AdminLayout from '../components/AdminLayout';
 import StatCard from '../components/StatCard';
@@ -29,9 +29,17 @@ function objectToChartData(obj) {
 
 export default function DashboardPage() {
   const { dashboardStats, loadDashboardStats, isLoading } = useAdminStore();
+  const loadRef = useRef(loadDashboardStats);
+  loadRef.current = loadDashboardStats;
 
   useEffect(() => {
-    loadDashboardStats();
+    let cancelled = false;
+
+    const load = () => {
+      if (!cancelled) loadRef.current();
+    };
+
+    load();
 
     // Refresh every 30 seconds, but only when the tab is visible
     const REFRESH_INTERVAL = 30_000;
@@ -41,7 +49,7 @@ export default function DashboardPage() {
       if (!intervalId) {
         intervalId = setInterval(() => {
           if (!document.hidden) {
-            loadDashboardStats();
+            load();
           }
         }, REFRESH_INTERVAL);
       }
@@ -58,7 +66,7 @@ export default function DashboardPage() {
       if (document.hidden) {
         stopPolling();
       } else {
-        loadDashboardStats();
+        load();
         startPolling();
       }
     };
@@ -67,10 +75,11 @@ export default function DashboardPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      cancelled = true;
       stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [loadDashboardStats]);
+  }, []); // Empty deps — runs once on mount, uses ref for stable access
 
   if (isLoading && !dashboardStats) {
     return (

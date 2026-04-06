@@ -44,13 +44,15 @@ export default function SearchAnalyticsPage() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [loadAnalytics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'filters') {
       loadSavedFilters();
     }
-  }, [activeTab, loadSavedFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleDeleteFilter = async (/* filterId */) => {
     // Saved filters delete endpoint is not yet implemented.
