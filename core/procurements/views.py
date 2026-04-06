@@ -95,6 +95,10 @@ class ProcurementViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def perform_create(self, serializer):
+        """Create procurement with active status"""
+        serializer.save(status=Procurement.Status.ACTIVE)
+
     @action(detail=True, methods=['get'])
     def participants(self, request, pk=None):
         """Get list of participants for a procurement"""
