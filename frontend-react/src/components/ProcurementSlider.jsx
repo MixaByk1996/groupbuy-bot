@@ -16,17 +16,12 @@ function firstWords(text, n) {
 function ProcurementSlider() {
   const { procurements, selectProcurement } = useStore();
 
-  // Batch-process all procurements in WASM for high performance
-  const processedProcurements = useMemo(() => {
-    if (procurements.length === 0) return [];
-    return batchProcessProcurements(procurements);
-  }, [procurements]);
 
   const handleCardClick = (procurement) => {
     selectProcurement(procurement.id);
   };
 
-  if (processedProcurements.length === 0) {
+  if (procurements.length === 0) {
     return (
       <section className="procurement-slider">
         <h2 className="slider-title">Активные закупки</h2>
@@ -41,7 +36,7 @@ function ProcurementSlider() {
     <section className="procurement-slider">
       <h2 className="slider-title">Активные закупки</h2>
       <div className="slider-container">
-        {processedProcurements.map((procurement) => (
+        {procurements.map((procurement) => (
           <div
             key={procurement.id}
             className="procurement-card"

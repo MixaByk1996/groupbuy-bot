@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
-import { generatePlatformUserId } from '../services/wasm';
+import {batchProcessProcurements, generatePlatformUserId} from '../services/wasm';
 
 export const useStore = create((set, get) => ({
   // User state
@@ -120,12 +120,22 @@ export const useStore = create((set, get) => ({
   },
 
   // Actions - Procurements
+  // В useStore.js
   loadProcurements: async (params = { status: 'active' }) => {
     set({ isLoading: true });
     try {
       const response = await api.getProcurements(params);
-      const procurements = response.results || response;
-      set({ procurements, isLoading: false });
+      const rawProcurements = response.results || response;
+
+      // Обрабатываем сразу в сторе
+      const processedProcurements = rawProcurements.length > 0
+          ? batchProcessProcurements(rawProcurements)
+          : [];
+
+      set({
+        procurements: processedProcurements,
+        isLoading: false
+      });
     } catch (error) {
       set({ error: error.message, isLoading: false });
       get().addToast('Ошибка загрузки закупок', 'error');

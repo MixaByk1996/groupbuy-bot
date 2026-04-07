@@ -65,7 +65,7 @@ function MainApp() {
     <>
       <Layout>
         <Routes>
-          <Route path="/" element={<ChatList />} />
+          <Route path="/" element={<Cabinet />} />
           <Route path="/chat/:procurementId" element={<ChatView />} />
           <Route path="/cabinet" element={<Cabinet />} />
           <Route path="/in-development" element={<UnderDevelopmentPage />} />
