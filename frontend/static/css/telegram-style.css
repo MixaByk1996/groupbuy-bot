@@ -80,7 +80,7 @@
     --tg-avatar-sm: 32px;
     --tg-avatar-md: 42px;
     --tg-avatar-lg: 54px;
-    --tg-max-width: 600px;
+    --tg-max-width: 480px;
 }
 
 /* Light theme override */
@@ -243,8 +243,7 @@ input, textarea, select {
     font-weight: 500;
     color: var(--tg-text-secondary);
     margin-bottom: var(--tg-spacing-xs);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .auth-input-wrapper {
@@ -403,9 +402,9 @@ input, textarea, select {
    ============================================ */
 
 .top-slider-section {
-    background-color: var(--tg-bg-tertiary);
+    background-color: var(--tg-bg-primary);
     border-bottom: 1px solid var(--tg-border);
-    padding: var(--tg-spacing-lg) 0 var(--tg-spacing-md);
+    padding: var(--tg-spacing-md) 0 var(--tg-spacing-sm);
     flex-shrink: 0;
 }
 
@@ -426,11 +425,11 @@ input, textarea, select {
 }
 
 .slider-slide-inner {
-    background-color: var(--tg-bg-primary);
+    background-color: var(--tg-bg-tertiary);
     border-radius: var(--tg-radius-xl);
-    padding: var(--tg-spacing-lg);
+    padding: var(--tg-spacing-md) var(--tg-spacing-lg);
     border: 1px solid var(--tg-border);
-    min-height: 80px;
+    min-height: 72px;
     display: flex;
     align-items: center;
     gap: var(--tg-spacing-md);
@@ -440,7 +439,7 @@ input, textarea, select {
 }
 
 .slider-slide-inner:hover {
-    background-color: var(--tg-bg-input);
+    background-color: var(--tg-bg-card);
 }
 
 .slider-slide-inner:active {
@@ -482,9 +481,9 @@ input, textarea, select {
 .slider-actions {
     display: flex;
     gap: var(--tg-spacing-sm);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    padding: var(--tg-spacing-sm) 0;
+    padding: 0;
 }
 
 .slider-action-btn {
@@ -492,34 +491,31 @@ input, textarea, select {
     flex-direction: column;
     align-items: center;
     gap: var(--tg-spacing-xs);
-    padding: var(--tg-spacing-md) var(--tg-spacing-lg);
-    background-color: var(--tg-bg-primary);
+    padding: var(--tg-spacing-md) var(--tg-spacing-md);
+    background-color: var(--tg-bg-tertiary);
     border: 1px solid var(--tg-border);
     border-radius: var(--tg-radius-md);
     cursor: pointer;
     transition: all var(--tg-transition);
-    min-width: 80px;
+    min-width: 72px;
     min-height: var(--tg-btn-min-height);
     flex: 1;
     color: var(--tg-text-primary);
 }
 
 .slider-action-btn:hover {
-    background-color: var(--tg-primary);
+    background-color: rgba(51, 144, 236, 0.12);
     border-color: var(--tg-primary);
 }
 
 .slider-action-btn:active {
     transform: scale(0.96);
+    background-color: rgba(51, 144, 236, 0.2);
 }
 
 .slider-action-icon {
     color: var(--tg-primary);
     transition: color var(--tg-transition);
-}
-
-.slider-action-btn:hover .slider-action-icon {
-    color: #ffffff;
 }
 
 .slider-action-label {
@@ -528,10 +524,7 @@ input, textarea, select {
     color: var(--tg-text-secondary);
     transition: color var(--tg-transition);
     text-align: center;
-}
-
-.slider-action-btn:hover .slider-action-label {
-    color: #ffffff;
+    white-space: nowrap;
 }
 
 /* Slider dots */
@@ -1624,7 +1617,7 @@ input, textarea, select {
     }
 
     .auth-container {
-        max-width: 420px;
+        max-width: 440px;
     }
 
     .modal-overlay {

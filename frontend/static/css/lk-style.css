@@ -228,10 +228,10 @@ a { color: var(--text-link); text-decoration: none; }
 /* Action buttons in top bar */
 .lk-topbar-actions {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: var(--spacing-sm);
     flex: 1;
-    flex-wrap: wrap;
+    flex-direction: column;
 }
 .btn-action {
     display: inline-flex;
@@ -257,6 +257,7 @@ a { color: var(--text-link); text-decoration: none; }
     background: var(--bg-section);
     color: var(--accent);
     border: 1.5px solid var(--accent);
+    box-shadow: none;
 }
 .btn-action-outline:hover { background: rgba(51,144,236,0.08); }
 .btn-action-icon {
