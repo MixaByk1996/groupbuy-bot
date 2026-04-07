@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
@@ -27,34 +27,12 @@ import WithdrawModal from './WithdrawModal';
 import CreateRequestModal from './CreateRequestModal';
 import ClosingDocumentsModal from './ClosingDocumentsModal';
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// ─── Inline SVG Icons ────────────────────────────────────────────────────────
 
-function CloudDownloadIcon() {
+function DownloadAppSvg() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="8 17 12 21 16 17" />
-      <line x1="12" y1="12" x2="12" y2="21" />
-      <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29" />
-    </svg>
-  );
-}
-
-function SwapRoleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M16 3l4 4-4 4" />
-      <line x1="20" y1="7" x2="4" y2="7" />
-      <path d="M8 21l-4-4 4-4" />
-      <line x1="4" y1="17" x2="20" y2="17" />
-    </svg>
-  );
-}
-
-function BankIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    <svg className="lk-btn-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 9a6 6 0 01-6 6m0 0a6 6 0 01-6-6m6 6V3m-6 18h12" />
     </svg>
   );
 }
@@ -77,334 +55,84 @@ function InvitationIcon() {
   );
 }
 
-// ─── LC Slider categories with content metadata ──────────────────────────────
+function BankSvg() {
+  return (
+    <svg className="lk-btn-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+    </svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg className="lk-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function LogoutSvg() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+// ─── LC Slider categories ────────────────────────────────────────────────────
 
 const LC_SLIDER_CATEGORIES = [
-  {
-    id: 'subscriptions',
-    label: 'Подписки',
-    description: 'Каналы и блоги на которые вы подписаны. Последние посты от авторов.',
-    icon: '⭐',
-  },
-  {
-    id: 'exchange',
-    label: 'Биржа',
-    description: 'Список желающих купить и продать. Оставьте заявку с ценой и описанием.',
-    icon: '📈',
-  },
-  {
-    id: 'rest',
-    label: 'Отдых',
-    description: 'Запросы и предложения по отдыху. Укажите когда, где, описание.',
-    icon: '🏖',
-  },
-  {
-    id: 'competitions',
-    label: 'Соревнования',
-    description: 'Правила, запросы участников и приглашения от организаторов.',
-    icon: '🏆',
-  },
-  {
-    id: 'housing',
-    label: 'Жилье',
-    description: 'Проект «Честное жильё». Запросы на покупку недвижимости.',
-    icon: '🏠',
-  },
-  {
-    id: 'news',
-    label: 'Новости',
-    description: 'Посты от организаторов и поставщиков по интересам.',
-    icon: '📰',
-  },
-  {
-    id: 'blogs',
-    label: 'Блоги / Каналы',
-    description: 'Лента последних постов: сначала ваши подписки, затем все остальные.',
-    icon: '📝',
-  },
+  { id: 'subscriptions', label: 'Подписки', description: 'Каналы и блоги, на которые вы подписаны' },
+  { id: 'exchange', label: 'Биржа', description: 'Купля и продажа товаров между участниками' },
+  { id: 'rest', label: 'Отдых', description: 'Запросы и предложения для отдыха' },
+  { id: 'competitions', label: 'Соревнования', description: 'Участвуйте в соревнованиях и выигрывайте' },
+  { id: 'housing', label: 'Жильё', description: 'Проект «Честное жильё» — группы покупателей' },
+  { id: 'news', label: 'Новости', description: 'Актуальные посты от поставщиков и организаторов' },
+  { id: 'blogs', label: 'Блоги / каналы', description: 'Лента постов и популярные материалы' },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
-/** Telegram-style top header bar: Avatar | Download App | Change Role */
-function CabinetTopBar({ user, onDownloadApp, onChangeRole }) {
-  const initials = getInitials(user.first_name, user.last_name);
-  const avatarBg = getAvatarColor(user.first_name || '');
-  return (
-    <div className="lc-topbar">
-      {/* Avatar button */}
-      <button
-        onClick={() => {}}
-        className="lc-topbar__avatar"
-        style={{ background: avatarBg }}
-        title={`${user.first_name} ${user.last_name || ''}`}
-      >
-        {initials}
-      </button>
-
-      {/* Action buttons: stack vertically on mobile, row on wider screens */}
-      <div className="lc-topbar__actions">
-        <button
-          className="lc-topbar__btn lc-topbar__btn--primary"
-          onClick={onDownloadApp}
-        >
-          <CloudDownloadIcon />
-          <span>Скачать приложение</span>
-        </button>
-        <button
-          className="lc-topbar__btn lc-topbar__btn--outline"
-          onClick={onChangeRole}
-        >
-          <SwapRoleIcon />
-          <span>Сменить роль</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Balance button — single wide row, bank API style */
-function BalanceButton({ balance, onDeposit, onWithdraw }) {
-  return (
-    <div style={{
-      margin: '8px 16px',
-      background: 'var(--tg-bg-secondary)',
-      borderRadius: 10,
-      padding: '12px 16px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem',
-      cursor: 'pointer',
-      boxShadow: 'var(--tg-shadow)',
-    }}
-      onClick={onDeposit}
-    >
-      <div style={{
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        background: 'var(--tg-primary)',
-        color: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <BankIcon />
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>Баланс</div>
-        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--tg-text-primary)' }}>
-          {formatCurrency(balance || 0)}
-        </div>
-      </div>
-      <button
-        className="btn btn-outline btn-round"
-        style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem', whiteSpace: 'nowrap' }}
-        onClick={(e) => { e.stopPropagation(); onWithdraw(); }}
-      >
-        Вывести
-      </button>
-    </div>
-  );
-}
-
-/** Horizontal carousel slider — exactly 4-text-line height, 280-320pt wide cards */
-function LCCarousel({ categories, activeCategory, onSelect }) {
-  return (
-    <div style={{ padding: '0 0 8px 0', position: 'relative' }}>
-      <div style={{
-        display: 'flex',
-        overflowX: 'auto',
-        gap: '8px',
-        padding: '4px 16px 4px 16px',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-      }}>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => onSelect(cat)}
-            style={{
-              flexShrink: 0,
-              width: 300,
-              height: 108, // ~4 lines of text at 16px line-height + padding
-              borderRadius: 10,
-              border: activeCategory === cat.id
-                ? '2px solid var(--tg-primary)'
-                : '1px solid var(--tg-border-light)',
-              background: activeCategory === cat.id
-                ? 'rgba(52, 168, 240, 0.08)'
-                : 'var(--tg-bg-secondary)',
-              cursor: 'pointer',
-              padding: '10px 14px',
-              textAlign: 'left',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              boxShadow: 'var(--tg-shadow)',
-              transition: 'border-color 0.15s, background 0.15s',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{cat.icon}</span>
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--tg-text-primary)' }}>
-                {cat.label}
-              </span>
-            </div>
-            <span style={{
-              fontSize: '0.78rem',
-              color: 'var(--tg-text-secondary)',
-              lineHeight: '1.4',
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}>
-              {cat.description}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Telegram-style search bar */
-function SearchBar({ value, onChange, placeholder = 'Поиск...' }) {
-  return (
-    <div style={{
-      margin: '0 16px 8px',
-      position: 'relative',
-    }}>
-      <div style={{
-        position: 'absolute',
-        left: 12,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        color: 'var(--tg-text-muted)',
-        pointerEvents: 'none',
-        display: 'flex',
-      }}>
-        <SearchIcon />
-      </div>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          width: '100%',
-          height: 40,
-          background: 'var(--tg-bg-secondary)',
-          border: '1px solid var(--tg-border-light)',
-          borderRadius: 20,
-          padding: '0 16px 0 44px',
-          fontSize: '0.9rem',
-          color: 'var(--tg-text-primary)',
-          outline: 'none',
-        }}
-      />
-    </div>
-  );
-}
-
-/** A single full-width action row — Telegram list item style, 2-line-height buttons */
+/** LK action row — Telegram-style list button with icon, label, badge, chevron */
 function ActionRow({ icon, label, badge, onClick, danger }) {
   return (
-    <div
-      className="cabinet-menu-item"
+    <button
+      className={`lk-list-action-btn${danger ? ' lk-list-action-btn--danger' : ''}`}
       onClick={onClick}
-      style={{
-        minHeight: 56,
-        padding: '0 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        cursor: 'pointer',
-        borderBottom: '1px solid var(--tg-border-light)',
-        background: 'var(--tg-bg-primary)',
-        transition: 'background 0.15s',
-      }}
     >
-      <span style={{ color: danger ? 'var(--tg-error)' : '#34A8F0', display: 'flex', flexShrink: 0 }}>
-        {icon}
-      </span>
-      <span style={{
-        flex: 1,
-        fontSize: '0.95rem',
-        fontWeight: 400,
-        color: danger ? 'var(--tg-error)' : 'var(--tg-text-primary)',
-      }}>
-        {label}
-      </span>
+      <span style={{ display: 'flex', flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
       {badge != null && badge > 0 && (
-        <span style={{
-          background: '#34A8F0',
-          color: '#fff',
-          borderRadius: 12,
-          fontSize: '0.7rem',
-          padding: '0 7px',
-          minWidth: 20,
-          height: 20,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 600,
-        }}>
-          {badge}
-        </span>
+        <span className="lk-message-badge">{badge}</span>
       )}
-      <span style={{ color: 'var(--tg-text-muted)', display: 'flex' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </span>
-    </div>
+      <ChevronRight />
+    </button>
   );
 }
 
 /** Section group header */
 function SectionHeader({ title }) {
-  return (
-    <div style={{
-      padding: '16px 16px 6px',
-      fontSize: '0.75rem',
-      fontWeight: 600,
-      color: 'var(--tg-text-secondary)',
-      textTransform: 'uppercase',
-      letterSpacing: '0.05em',
-    }}>
-      {title}
-    </div>
-  );
+  return <div className="lk-group-header">{title}</div>;
 }
 
-/** Card content panel shown below an ActionRow when expanded */
+/** Expandable content panel */
 function ContentPanel({ children }) {
-  return (
-    <div style={{
-      background: 'var(--tg-bg-secondary)',
-      borderBottom: '1px solid var(--tg-border-light)',
-      padding: '8px 16px 12px',
-    }}>
-      {children}
-    </div>
-  );
+  return <div className="lk-content-panel">{children}</div>;
 }
 
-// ─── Category page content ────────────────────────────────────────────────────
+// ─── Category page content ───────────────────────────────────────────────────
 
 function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedLoading, onLoadNewsFeed, navigate }) {
   if (!category) return null;
 
   if (category.id === 'subscriptions') {
     return (
-      <div style={{ padding: '0 16px' }}>
-        <p style={{ fontSize: '0.875rem', color: 'var(--tg-text-secondary)', padding: '8px 0' }}>
-          Последние посты из ваших подписок появятся здесь.
-        </p>
-      </div>
+      <p className="lk-purchase-meta" style={{ padding: '4px 0' }}>
+        Последние посты из ваших подписок появятся здесь.
+      </p>
     );
   }
 
@@ -414,22 +142,22 @@ function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedL
       ...(procurements?.participating || []),
     ].filter((p) => p.status === 'active');
     return (
-      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', padding: '4px 0' }}>
-          Биржа — список желающих купить и продать.
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p className="lk-purchase-meta">Биржа — список желающих купить и продать.</p>
         {allProcs.length === 0 ? (
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>Нет активных позиций</p>
+          <p className="lk-purchase-stats">Нет активных позиций</p>
         ) : (
           allProcs.slice(0, 5).map((p) => (
             <div
               key={p.id}
+              className="lk-purchase-item"
               onClick={() => navigate && navigate(`/chat/${p.id}`)}
-              style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--tg-shadow)', cursor: 'pointer' }}
             >
-              <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.title}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-                {p.city} · {formatCurrency(p.current_amount || 0)} · {p.participant_count || 0} участн.
+              <div className="lk-purchase-info">
+                <div className="lk-purchase-name">{p.title}</div>
+                <div className="lk-purchase-meta">
+                  {p.city} · {formatCurrency(p.current_amount || 0)} · {p.participant_count || 0} участн.
+                </div>
               </div>
             </div>
           ))
@@ -440,42 +168,35 @@ function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedL
 
   if (category.id === 'news') {
     return (
-      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', margin: 0 }}>
-            Посты от организаторов и поставщиков.
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p className="lk-purchase-meta" style={{ margin: 0 }}>Посты от организаторов и поставщиков.</p>
           <button
-            className="btn btn-outline btn-round"
-            style={{ fontSize: '0.75rem', padding: '4px 10px', whiteSpace: 'nowrap' }}
+            className="lk-btn-invite-accept"
+            style={{ fontSize: '0.75rem', padding: '4px 10px' }}
             onClick={onLoadNewsFeed}
             disabled={newsFeedLoading}
           >
-            {newsFeedLoading ? 'Загрузка...' : '🔄 Обновить'}
+            {newsFeedLoading ? 'Загрузка...' : 'Обновить'}
           </button>
         </div>
         {newsFeed.length === 0 && !newsFeedLoading && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>
-            Нажмите «Обновить» чтобы загрузить новости
-          </p>
+          <p className="lk-purchase-stats">Нажмите «Обновить» чтобы загрузить новости</p>
         )}
         {newsFeed.map((item) => (
           <div
             key={item.id}
+            className="lk-purchase-item"
             onClick={() => item.procurement_id && navigate && navigate(`/chat/${item.procurement_id}`)}
-            style={{
-              background: 'var(--tg-bg-primary)',
-              borderRadius: 8,
-              padding: '10px 12px',
-              boxShadow: 'var(--tg-shadow)',
-              cursor: item.procurement_id ? 'pointer' : 'default',
-            }}
+            style={{ cursor: item.procurement_id ? 'pointer' : 'default' }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>{item.title}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', marginBottom: 6, lineHeight: 1.4 }}>{item.text}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)', fontWeight: 500 }}>{item.author}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(item.date)}</span>
+            <div className="lk-purchase-info">
+              <div className="lk-purchase-name">{item.title}</div>
+              <div className="lk-purchase-meta" style={{ marginBottom: 2 }}>{item.text}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="lk-purchase-stats">{item.author}</span>
+                <span className="lk-purchase-stats">{formatTime(item.date)}</span>
+              </div>
             </div>
           </div>
         ))}
@@ -483,18 +204,15 @@ function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedL
     );
   }
 
-  // For all other categories
   return (
-    <div style={{ padding: '0 16px' }}>
-      <p style={{ fontSize: '0.875rem', color: 'var(--tg-text-secondary)', padding: '8px 0' }}>
-        {category.description}
-      </p>
-      <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-muted)' }}>Раздел разрабатывается...</p>
+    <div>
+      <p className="lk-purchase-meta" style={{ padding: '4px 0' }}>{category.description}</p>
+      <p className="lk-purchase-stats">Раздел разрабатывается...</p>
     </div>
   );
 }
 
-// ─── Main Cabinet component ───────────────────────────────────────────────────
+// ─── Main Cabinet component ──────────────────────────────────────────────────
 
 function Cabinet() {
   const navigate = useNavigate();
@@ -520,7 +238,7 @@ function Cabinet() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [userSearchLoading, setUserSearchLoading] = useState(false);
-  const userSearchTimeout = React.useRef(null);
+  const userSearchTimeout = useRef(null);
 
   // Add participant modal state
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
@@ -531,7 +249,7 @@ function Cabinet() {
   const [addParticipantSelected, setAddParticipantSelected] = useState(null);
   const [addParticipantAmount, setAddParticipantAmount] = useState('');
   const [addParticipantQuantity, setAddParticipantQuantity] = useState('1');
-  const addParticipantSearchTimeout = React.useRef(null);
+  const addParticipantSearchTimeout = useRef(null);
 
   // Subscriptions
   const [subscriptions, setSubscriptions] = useState([
@@ -559,7 +277,7 @@ function Cabinet() {
   const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
   const [supplierSearchResults, setSupplierSearchResults] = useState([]);
   const [supplierSearchLoading, setSupplierSearchLoading] = useState(false);
-  const supplierSearchTimeout = React.useRef(null);
+  const supplierSearchTimeout = useRef(null);
 
   // News feed state
   const [newsFeed, setNewsFeed] = useState([]);
@@ -569,6 +287,26 @@ function Cabinet() {
   const [activeSection, setActiveSection] = useState(null);
   const [selectedCarouselCategory, setSelectedCarouselCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Slider dots
+  const sliderTrackRef = useRef(null);
+  const [activeDot, setActiveDot] = useState(0);
+
+  const handleSliderScroll = useCallback(() => {
+    const track = sliderTrackRef.current;
+    if (!track) return;
+    const scrollLeft = track.scrollLeft;
+    const cardWidth = 280 + 12; // card width + gap
+    const idx = Math.round(scrollLeft / cardWidth);
+    setActiveDot(Math.min(idx, LC_SLIDER_CATEGORIES.length - 1));
+  }, []);
+
+  const scrollToCard = useCallback((idx) => {
+    const track = sliderTrackRef.current;
+    if (!track) return;
+    const cardWidth = 280 + 12;
+    track.scrollTo({ left: idx * cardWidth, behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -827,10 +565,8 @@ function Cabinet() {
   const handleLoadNewsFeed = async () => {
     setNewsFeedLoading(true);
     try {
-      // Load procurements as a proxy for news (organizer/supplier updates)
       const result = await api.getProcurements({ status: 'active' }).catch(() => null);
       const list = result ? (result.results || result) : [];
-      // Use procurements as news items (title, organizer, city, date)
       setNewsFeed(list.slice(0, 20).map((p) => ({
         id: p.id,
         title: p.title,
@@ -959,61 +695,56 @@ function Cabinet() {
 
   const toggleSection = (id) => setActiveSection((prev) => (prev === id ? null : id));
 
-  // ─── Section renderers ──────────────────────────────────────────────────────
+  // ─── Section renderers ─────────────────────────────────────────────────────
 
   const renderMessages = () => (
     <ContentPanel>
       {messages.length === 0 ? (
-        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет сообщений</p>
+        <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>Нет сообщений</p>
       ) : (
-        messages.map((m) => (
-          <div key={m.id} style={{ marginBottom: 6 }}>
-            <div
-              onClick={() => { handleMarkMessageRead(m.id); setReplyTarget(m); }}
-              style={{
-                background: m.read ? 'var(--tg-bg-primary)' : 'rgba(52,168,240,0.08)',
-                borderRadius: 8,
-                padding: '8px 12px',
-                cursor: 'pointer',
-                borderLeft: m.read ? 'none' : '3px solid #34A8F0',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{m.from}</span>
-                {!m.read && (
-                  <span style={{ background: '#34A8F0', color: '#fff', borderRadius: 10, fontSize: '0.65rem', padding: '0 6px' }}>
-                    Новое
-                  </span>
-                )}
+        <div className="lk-messages-list">
+          {messages.map((m) => (
+            <div key={m.id}>
+              <div
+                className="lk-message-item"
+                onClick={() => { handleMarkMessageRead(m.id); setReplyTarget(m); }}
+                style={!m.read ? { background: 'rgba(36,129,204,0.06)', borderLeft: '3px solid var(--tg-primary)' } : undefined}
+              >
+                <div className="lk-message-avatar" style={{ background: getAvatarColor(m.from) }}>
+                  {getInitials(m.from, '')}
+                </div>
+                <div className="lk-message-info">
+                  <div className="lk-message-row">
+                    <span className="lk-message-name">{m.from}</span>
+                    <span className="lk-message-time">{formatTime(m.date)}</span>
+                  </div>
+                  <div className="lk-message-text">{m.text}</div>
+                </div>
+                {!m.read && <span className="lk-message-badge">!</span>}
               </div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', display: 'block', marginTop: 2 }}>{m.text}</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(m.date)}</span>
-                <span style={{ fontSize: '0.7rem', color: '#34A8F0' }}>Ответить</span>
-              </div>
+              {replyTarget?.id === m.id && (
+                <div style={{ marginTop: 4, display: 'flex', gap: 6, padding: '0 4px' }}>
+                  <input
+                    type="text"
+                    className="lk-search-input"
+                    style={{ flex: 1, borderRadius: 8, paddingLeft: 12 }}
+                    placeholder="Написать ответ..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleReplyMessage()}
+                    autoFocus
+                  />
+                  <button className="lk-btn-invite-accept" style={{ fontSize: '0.8rem', padding: '6px 12px' }} onClick={handleReplyMessage}>
+                    Отправить
+                  </button>
+                  <button className="lk-category-panel-close" onClick={() => { setReplyTarget(null); setReplyText(''); }}>
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
-            {replyTarget?.id === m.id && (
-              <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  style={{ fontSize: '0.8rem', padding: '6px 10px', flex: 1, borderRadius: 8 }}
-                  placeholder="Написать ответ..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleReplyMessage()}
-                  autoFocus
-                />
-                <button className="btn btn-primary btn-round" style={{ fontSize: '0.8rem', padding: '6px 12px', whiteSpace: 'nowrap' }} onClick={handleReplyMessage}>
-                  Отправить
-                </button>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', fontSize: '1rem', padding: '0 4px' }} onClick={() => { setReplyTarget(null); setReplyText(''); }}>
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </ContentPanel>
   );
@@ -1021,41 +752,39 @@ function Cabinet() {
   const renderInvitations = () => (
     <ContentPanel>
       {invitations.length === 0 ? (
-        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет новых приглашений</p>
+        <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>Нет новых приглашений</p>
       ) : (
-        invitations.map((inv) => (
-          <div
-            key={inv.id}
-            onClick={() => {
-              handleMarkInvitationRead(inv.id);
-              if (inv.procurement_id) navigate(`/chat/${inv.procurement_id}`);
-            }}
-            style={{
-              background: inv.read ? 'var(--tg-bg-primary)' : 'rgba(52,168,240,0.08)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              marginBottom: 6,
-              cursor: 'pointer',
-              borderLeft: inv.read ? 'none' : '3px solid #34A8F0',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{inv.from}</span>
-              {!inv.read && (
-                <span style={{ background: '#34A8F0', color: '#fff', borderRadius: 10, fontSize: '0.65rem', padding: '0 6px' }}>
-                  Новое
-                </span>
+        <div className="lk-messages-list">
+          {invitations.map((inv) => (
+            <div
+              key={inv.id}
+              className="lk-message-item"
+              onClick={() => {
+                handleMarkInvitationRead(inv.id);
+                if (inv.procurement_id) navigate(`/chat/${inv.procurement_id}`);
+              }}
+              style={!inv.read ? { background: 'rgba(36,129,204,0.06)', borderLeft: '3px solid var(--tg-primary)' } : undefined}
+            >
+              <div className="lk-message-avatar" style={{ background: getAvatarColor(inv.from) }}>
+                {getInitials(inv.from, '')}
+              </div>
+              <div className="lk-message-info">
+                <div className="lk-message-row">
+                  <span className="lk-message-name">{inv.from}</span>
+                  <span className="lk-message-time">{formatTime(inv.date)}</span>
+                </div>
+                <div className="lk-message-text">{inv.text}</div>
+              </div>
+              {inv.procurement_id ? (
+                <button className="lk-btn-invite-accept" onClick={(e) => { e.stopPropagation(); navigate(`/chat/${inv.procurement_id}`); }}>
+                  Принять
+                </button>
+              ) : (
+                !inv.read && <span className="lk-message-badge">!</span>
               )}
             </div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--tg-text-primary)', display: 'block', marginTop: 2 }}>{inv.text}</span>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(inv.date)}</span>
-              {inv.procurement_id && (
-                <span style={{ fontSize: '0.7rem', color: '#34A8F0', fontWeight: 500 }}>Перейти в чат →</span>
-              )}
-            </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </ContentPanel>
   );
@@ -1069,32 +798,30 @@ function Cabinet() {
     return (
       <ContentPanel>
         {activeProcs.length === 0 ? (
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет активных закупок</p>
+          <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>Нет активных закупок</p>
         ) : (
-          activeProcs.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => navigate(`/chat/${p.id}`)}
-              style={{
-                background: 'var(--tg-bg-primary)',
-                borderRadius: 8,
-                padding: '8px 12px',
-                marginBottom: 6,
-                cursor: 'pointer',
-                boxShadow: 'var(--tg-shadow)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.title}</span>
-                <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.65rem' }}>
-                  {getStatusText(p.status)}
-                </span>
+          activeProcs.map((p) => {
+            const progress = p.target_amount ? Math.round((p.current_amount / p.target_amount) * 100) : 0;
+            return (
+              <div key={p.id} className="lk-purchase-item" onClick={() => navigate(`/chat/${p.id}`)}>
+                <div className="lk-purchase-icon" style={{ background: getAvatarColor(p.title || '') }}>
+                  {getInitials(p.title || '', '')}
+                </div>
+                <div className="lk-purchase-info">
+                  <div className="lk-purchase-name">{p.title}</div>
+                  <div className="lk-purchase-meta">
+                    {p.participant_count || 0} участников{p.participation_deadline ? ` · Дедлайн: ${formatTime(p.participation_deadline)}` : ''}
+                  </div>
+                  <div className="lk-purchase-progress-bar">
+                    <div className="lk-purchase-progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
+                  </div>
+                  <div className="lk-purchase-stats">
+                    {progress}% собрано · {formatCurrency(p.current_amount || 0)} из {formatCurrency(p.target_amount || 0)}
+                  </div>
+                </div>
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-                {p.city} · {p.participant_count || 0} участн.
-              </span>
-            </div>
-          ))
+            );
+          })
         )}
       </ContentPanel>
     );
@@ -1103,37 +830,39 @@ function Cabinet() {
   const renderPurchaseHistory = () => (
     <ContentPanel>
       {procurementHistory.length === 0 ? (
-        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>История закупок пуста</p>
+        <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>История закупок пуста</p>
       ) : (
         procurementHistory.map((p) => (
-          <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block' }}>{p.title}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-              {p.city} · {formatCurrency(p.current_amount || 0)} / {formatCurrency(p.target_amount || 0)}
-            </span>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-              {user.role === 'organizer' && p.organizer === user.id ? (
-                <select
-                  value={p.status}
-                  onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 6, border: '1px solid var(--tg-border)', background: 'var(--tg-bg-primary)', cursor: 'pointer' }}
-                >
-                  {[
-                    { value: 'draft', label: 'Черновик' },
-                    { value: 'active', label: 'Активная' },
-                    { value: 'stopped', label: 'Остановлена' },
-                    { value: 'payment', label: 'Оплата' },
-                    { value: 'completed', label: 'Завершена' },
-                    { value: 'cancelled', label: 'Отменена' },
-                  ].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              ) : (
-                <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.7rem' }}>
-                  {getStatusText(p.status)}
-                </span>
-              )}
-              <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)' }}>{formatTime(p.updated_at)}</span>
+          <div key={p.id} className="lk-purchase-item" style={{ cursor: 'default' }}>
+            <div className="lk-purchase-icon" style={{ background: p.status === 'completed' ? '#4fae4e' : '#e17076' }}>
+              {p.status === 'completed' ? '✓' : '✗'}
             </div>
+            <div className="lk-purchase-info">
+              <div className="lk-purchase-name">{p.title}</div>
+              <div className="lk-purchase-meta">
+                Завершено: {formatTime(p.updated_at)}
+              </div>
+              <div className="lk-purchase-stats" style={p.status === 'completed' ? { color: '#4fae4e' } : undefined}>
+                {p.status === 'completed' ? '✓ Успешно' : '✗ Отменена'} · {formatCurrency(p.current_amount || 0)}
+              </div>
+            </div>
+            {user.role === 'organizer' && p.organizer === user.id && (
+              <select
+                value={p.status}
+                onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
+                className="lk-search-input"
+                style={{ width: 'auto', padding: '2px 6px', borderRadius: 6, border: '1px solid var(--tg-border-light)' }}
+              >
+                {[
+                  { value: 'draft', label: 'Черновик' },
+                  { value: 'active', label: 'Активная' },
+                  { value: 'stopped', label: 'Остановлена' },
+                  { value: 'payment', label: 'Оплата' },
+                  { value: 'completed', label: 'Завершена' },
+                  { value: 'cancelled', label: 'Отменена' },
+                ].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            )}
           </div>
         ))
       )}
@@ -1145,30 +874,28 @@ function Cabinet() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         <input
           type="text"
-          className="form-input"
-          style={{ fontSize: '0.8rem', padding: '6px 10px', flex: 1, borderRadius: 8 }}
+          className="lk-search-input"
+          style={{ flex: 1, paddingLeft: 12, borderRadius: 8 }}
           placeholder="Категория или организатор..."
           value={newSubscription}
           onChange={(e) => setNewSubscription(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddSubscription()}
         />
-        <button className="btn btn-primary btn-round" style={{ fontSize: '0.8rem', padding: '6px 12px', whiteSpace: 'nowrap' }} onClick={handleAddSubscription}>
-          + Добавить
-        </button>
+        <button className="lk-btn-invite-accept" onClick={handleAddSubscription}>+ Добавить</button>
       </div>
       {subscriptions.map((s) => (
-        <div key={s.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8, boxShadow: 'var(--tg-shadow)' }}>
-          <span style={{ fontSize: '0.8rem', flex: 1, fontWeight: 500 }}>
+        <div key={s.id} className="lk-message-item" style={{ cursor: 'default' }}>
+          <span className="lk-message-name" style={{ flex: 1 }}>
             {s.type === 'organizer' ? '👤' : '🏷️'} {s.name}
           </span>
           <button
-            className={`btn btn-round ${s.active ? 'btn-primary' : 'btn-outline'}`}
-            style={{ fontSize: '0.7rem', padding: '3px 8px' }}
+            className={`lk-btn-invite-accept`}
+            style={s.active ? {} : { background: 'var(--tg-bg-secondary)', color: 'var(--tg-text-secondary)', border: '1px solid var(--tg-border-light)' }}
             onClick={() => handleToggleSubscription(s.id)}
           >
             {s.active ? 'Вкл' : 'Выкл'}
           </button>
-          <button onClick={() => handleDeleteSubscription(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', fontSize: '1rem', padding: 0 }}>×</button>
+          <button className="lk-category-panel-close" onClick={() => handleDeleteSubscription(s.id)}>×</button>
         </div>
       ))}
     </ContentPanel>
@@ -1176,21 +903,20 @@ function Cabinet() {
 
   const renderSettings = () => (
     <ContentPanel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '10px 12px', boxShadow: 'var(--tg-shadow)' }}>
-          <span style={{ fontSize: '0.875rem' }}>Тема оформления</span>
-          <div style={{ display: 'flex', gap: 6 }}>
+      <div className="lk-settings-section">
+        <div className="lk-settings-item">
+          <span className="lk-settings-item-label">Тема оформления</span>
+          <div className="lk-theme-switcher">
             {['light', 'dark'].map((t) => (
               <button
                 key={t}
-                className={`btn btn-round ${document.documentElement.getAttribute('data-theme') === t ? 'btn-primary' : 'btn-outline'}`}
-                style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                className={`lk-theme-btn${document.documentElement.getAttribute('data-theme') === t ? ' active' : ''}`}
                 onClick={() => {
                   document.documentElement.setAttribute('data-theme', t);
                   localStorage.setItem('theme', t);
                 }}
               >
-                {t === 'light' ? '☀️ Светлая' : '🌙 Тёмная'}
+                {t === 'light' ? 'Светлая' : 'Тёмная'}
               </button>
             ))}
           </div>
@@ -1203,34 +929,34 @@ function Cabinet() {
     <ContentPanel>
       <input
         type="text"
-        className="form-input"
-        style={{ fontSize: '0.85rem', padding: '8px 12px', width: '100%', marginBottom: 8, borderRadius: 8 }}
+        className="lk-search-input"
+        style={{ marginBottom: 8, paddingLeft: 12, borderRadius: 8 }}
         placeholder="Имя, email, телефон..."
         value={userSearchQuery}
         onChange={(e) => handleUserSearch(e.target.value)}
       />
-      {userSearchLoading && <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-muted)' }}>Поиск...</p>}
+      {userSearchLoading && <p className="lk-purchase-stats">Поиск...</p>}
       {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-muted)' }}>Пользователи не найдены</p>
+        <p className="lk-purchase-stats">Пользователи не найдены</p>
       )}
-      {userSearchResults.map((u) => (
-        <div key={u.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'var(--tg-shadow)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#34A8F0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0 }}>
-            {getInitials(u.first_name, u.last_name)}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {u.first_name || ''} {u.last_name || ''}
+      <div className="lk-messages-list">
+        {userSearchResults.map((u) => (
+          <div key={u.id} className="lk-message-item" style={{ cursor: 'default' }}>
+            <div className="lk-message-avatar" style={{ background: getAvatarColor(u.first_name || ''), width: 36, height: 36, fontSize: 13 }}>
+              {getInitials(u.first_name, u.last_name)}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-              {u.username ? `@${u.username}` : u.email || u.phone || getRoleText(u.role)}
+            <div className="lk-message-info">
+              <div className="lk-message-name">{u.first_name || ''} {u.last_name || ''}</div>
+              <div className="lk-message-text">
+                {u.username ? `@${u.username}` : u.email || u.phone || getRoleText(u.role)}
+              </div>
             </div>
+            <span className="lk-message-badge" style={{ background: 'rgba(36,129,204,0.12)', color: 'var(--tg-primary)', fontSize: 11 }}>
+              {getRoleText(u.role)}
+            </span>
           </div>
-          <span style={{ fontSize: '0.65rem', background: 'rgba(52,168,240,0.12)', color: '#34A8F0', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>
-            {getRoleText(u.role)}
-          </span>
-        </div>
-      ))}
+        ))}
+      </div>
     </ContentPanel>
   );
 
@@ -1239,21 +965,22 @@ function Cabinet() {
     return (
       <ContentPanel>
         {procs.length === 0 ? (
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет закупок</p>
+          <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>Нет закупок</p>
         ) : (
           procs.map((p) => (
-            <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'var(--tg-shadow)' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }} onClick={() => navigate(`/chat/${p.id}`)}>
+            <div key={p.id} className="lk-purchase-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <div className="lk-purchase-name" style={{ cursor: 'pointer' }} onClick={() => navigate(`/chat/${p.id}`)}>
                 {p.title}
-              </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
+              </div>
+              <div className="lk-purchase-meta">
                 {p.city} · {p.participant_count || 0} участн. · {formatCurrency(p.current_amount || 0)}
-              </span>
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <select
                   value={p.status}
                   onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
-                  style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 6, border: '1px solid var(--tg-border)', background: 'var(--tg-bg-primary)', cursor: 'pointer' }}
+                  className="lk-search-input"
+                  style={{ width: 'auto', padding: '2px 6px', borderRadius: 6, border: '1px solid var(--tg-border-light)' }}
                 >
                   {[
                     { value: 'draft', label: 'Черновик' },
@@ -1265,7 +992,7 @@ function Cabinet() {
                   ].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 {p.status === 'active' && (
-                  <button className="btn btn-outline btn-round" style={{ fontSize: '0.7rem', padding: '2px 8px' }} onClick={() => handleOpenAddParticipant(p)}>
+                  <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '2px 8px' }} onClick={() => handleOpenAddParticipant(p)}>
                     + Добавить участника
                   </button>
                 )}
@@ -1280,57 +1007,41 @@ function Cabinet() {
   const renderPaymentProcurements = () => (
     <ContentPanel>
       {paymentProcurements.length === 0 ? (
-        <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>Нет закупок в стадии оплаты</p>
+        <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>Нет закупок в стадии оплаты</p>
       ) : (
         paymentProcurements.map((p) => (
-          <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
+          <div key={p.id} className="lk-purchase-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', flex: 1 }} onClick={() => navigate(`/chat/${p.id}`)}>
+              <span className="lk-purchase-name" style={{ cursor: 'pointer', flex: 1 }} onClick={() => navigate(`/chat/${p.id}`)}>
                 {p.title}
               </span>
               <span className={`status-badge status-${p.status}`} style={{ fontSize: '0.65rem', flexShrink: 0, marginLeft: 6 }}>
                 {getStatusText(p.status)}
               </span>
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 8 }}>
+            <div className="lk-purchase-meta">
               {p.city} · {p.participant_count || 0} участн. · {formatCurrency(p.current_amount || 0)}
               {p.participation_deadline && ` · до ${formatTime(p.participation_deadline)}`}
-            </span>
+            </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {p.status === 'active' && (
-                <button
-                  className="btn btn-outline btn-round"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
-                  onClick={() => handleStopProcurement(p)}
-                >
-                  🛑 Стоп-сумма
+                <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '3px 8px', background: 'var(--tg-bg-secondary)', color: 'var(--tg-primary)', border: '1px solid var(--tg-primary)' }} onClick={() => handleStopProcurement(p)}>
+                  Стоп-сумма
                 </button>
               )}
               {(p.status === 'active' || p.status === 'stopped') && (
-                <button
-                  className="btn btn-outline btn-round"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
-                  onClick={() => handleOpenApproveSupplier(p)}
-                >
-                  ✅ Одобрить поставщика
+                <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '3px 8px', background: 'var(--tg-bg-secondary)', color: 'var(--tg-primary)', border: '1px solid var(--tg-primary)' }} onClick={() => handleOpenApproveSupplier(p)}>
+                  Одобрить поставщика
                 </button>
               )}
               {(p.status === 'stopped' || p.status === 'payment') && (
-                <button
-                  className="btn btn-outline btn-round"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px' }}
-                  onClick={() => handleCreateReceiptTable(p)}
-                >
-                  📊 Создать таблицу
+                <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '3px 8px', background: 'var(--tg-bg-secondary)', color: 'var(--tg-primary)', border: '1px solid var(--tg-primary)' }} onClick={() => handleCreateReceiptTable(p)}>
+                  Создать таблицу
                 </button>
               )}
               {(p.status === 'stopped' || p.status === 'payment') && (
-                <button
-                  className="btn btn-outline btn-round"
-                  style={{ fontSize: '0.7rem', padding: '3px 8px', color: 'var(--tg-error)', borderColor: 'var(--tg-error)' }}
-                  onClick={() => handleCloseProcurement(p)}
-                >
-                  🔒 Закрыть закупку
+                <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '3px 8px', background: 'var(--tg-bg-secondary)', color: 'var(--tg-error)', border: '1px solid var(--tg-error)' }} onClick={() => handleCloseProcurement(p)}>
+                  Закрыть закупку
                 </button>
               )}
             </div>
@@ -1345,15 +1056,18 @@ function Cabinet() {
     return (
       <ContentPanel>
         {completedShipments.length === 0 ? (
-          <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)', padding: '4px 0' }}>История отгрузок пуста</p>
+          <p className="lk-purchase-stats" style={{ padding: '4px 0' }}>История отгрузок пуста</p>
         ) : (
           completedShipments.map((p) => (
-            <div key={p.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block' }}>{p.title}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', display: 'block' }}>
-                {p.city} · {formatCurrency(p.current_amount || 0)} · {formatTime(p.updated_at)}
-              </span>
-              <span className="status-badge status-completed" style={{ fontSize: '0.65rem', marginTop: 4, display: 'inline-block' }}>Завершена</span>
+            <div key={p.id} className="lk-purchase-item" style={{ cursor: 'default' }}>
+              <div className="lk-purchase-icon" style={{ background: '#4fae4e' }}>✓</div>
+              <div className="lk-purchase-info">
+                <div className="lk-purchase-name">{p.title}</div>
+                <div className="lk-purchase-meta">
+                  {p.city} · {formatCurrency(p.current_amount || 0)} · {formatTime(p.updated_at)}
+                </div>
+                <span className="status-badge status-completed" style={{ fontSize: '0.65rem' }}>Завершена</span>
+              </div>
             </div>
           ))
         )}
@@ -1361,7 +1075,7 @@ function Cabinet() {
     );
   };
 
-  // ─── Role-specific extra sections ──────────────────────────────────────────
+  // ─── Role-specific sections ────────────────────────────────────────────────
 
   const renderRoleRows = () => {
     const role = user.role;
@@ -1375,7 +1089,7 @@ function Cabinet() {
       return (
         <>
           <SectionHeader title="Закупки" />
-          <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+          <div className="lk-section-group">
             <ActionRow icon={<PlusIcon />} label="Создать закупку" onClick={openCreateProcurementModal} />
             <ActionRow icon={<ShoppingBagIcon />} label="Открытые закупки" badge={myProcurements?.organized?.filter((p) => p.status === 'active' || p.status === 'draft').length || 0} onClick={() => toggleSection('myProcurements')} />
             {activeSection === 'myProcurements' && renderMyProcurements()}
@@ -1386,10 +1100,10 @@ function Cabinet() {
             <ActionRow icon={<PlusIcon />} label="Создать новость" onClick={() => setNewsOpen(true)} />
           </div>
           <SectionHeader title="Коммуникация" />
-          <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+          <div className="lk-section-group">
             <ActionRow icon={<MailIcon />} label="Сообщения" badge={unreadCount} onClick={() => toggleSection('messages')} />
             {activeSection === 'messages' && renderMessages()}
-            <ActionRow icon={<SearchIcon className={undefined} />} label="Поиск пользователей" onClick={() => toggleSection('userSearch')} />
+            <ActionRow icon={<SearchIcon />} label="Поиск пользователей" onClick={() => toggleSection('userSearch')} />
             {activeSection === 'userSearch' && renderUserSearch()}
           </div>
         </>
@@ -1400,20 +1114,20 @@ function Cabinet() {
       return (
         <>
           <SectionHeader title="Отгрузки" />
-          <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+          <div className="lk-section-group">
             <ActionRow icon={<HomeIcon />} label="Карточка компании" onClick={() => setCompanyCardOpen(true)} />
             <ActionRow icon={<FileIcon />} label="Загрузить прайс-лист" onClick={() => setPriceListOpen(true)} />
             <ActionRow icon={<ShoppingBagIcon />} label="Текущие отгрузки" badge={orderTables.length} onClick={handleOpenOrderTables} />
             {activeSection === 'orderTables' && (
               <ContentPanel>
                 {orderTables.length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>Нет текущих отгрузок</p>
+                  <p className="lk-purchase-stats">Нет текущих отгрузок</p>
                 ) : (
                   orderTables.map((table, idx) => (
-                    <div key={idx} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block' }}>{table.procurement_title}</span>
-                      {table.total_amount && <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>Сумма: {formatCurrency(table.total_amount)}</span>}
-                      <button className="btn btn-outline btn-round" style={{ fontSize: '0.75rem', padding: '4px 10px', marginTop: 6 }} onClick={() => { setSelectedOrderTableId(table.procurement_id); setClosingDocsOpen(true); }}>
+                    <div key={idx} className="lk-purchase-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                      <div className="lk-purchase-name">{table.procurement_title}</div>
+                      {table.total_amount && <div className="lk-purchase-meta">Сумма: {formatCurrency(table.total_amount)}</div>}
+                      <button className="lk-btn-invite-accept" style={{ fontSize: '0.75rem', padding: '4px 10px', alignSelf: 'flex-start', marginTop: 6 }} onClick={() => { setSelectedOrderTableId(table.procurement_id); setClosingDocsOpen(true); }}>
                         Отправить закрывающие документы
                       </button>
                     </div>
@@ -1425,12 +1139,17 @@ function Cabinet() {
             {activeSection === 'pending' && (
               <ContentPanel>
                 {pendingItems.length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>Нет закупок в ожидании</p>
+                  <p className="lk-purchase-stats">Нет закупок в ожидании</p>
                 ) : (
                   pendingItems.map((p) => (
-                    <div key={p.id} onClick={() => navigate(`/chat/${p.id}`)} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, cursor: 'pointer', boxShadow: 'var(--tg-shadow)' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem', display: 'block' }}>{p.title}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>{p.city} · {p.participant_count || 0} участн.</span>
+                    <div key={p.id} className="lk-purchase-item" onClick={() => navigate(`/chat/${p.id}`)}>
+                      <div className="lk-purchase-icon" style={{ background: getAvatarColor(p.title || '') }}>
+                        {getInitials(p.title || '', '')}
+                      </div>
+                      <div className="lk-purchase-info">
+                        <div className="lk-purchase-name">{p.title}</div>
+                        <div className="lk-purchase-meta">{p.city} · {p.participant_count || 0} участн.</div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -1440,10 +1159,10 @@ function Cabinet() {
             {activeSection === 'shipmentHistory' && renderShipmentHistory()}
           </div>
           <SectionHeader title="Коммуникация" />
-          <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+          <div className="lk-section-group">
             <ActionRow icon={<MailIcon />} label="Приглашения и сообщения" badge={unreadCount} onClick={() => toggleSection('messages')} />
             {activeSection === 'messages' && renderMessages()}
-            <ActionRow icon={<SearchIcon className={undefined} />} label="Поиск пользователей" onClick={() => toggleSection('userSearch')} />
+            <ActionRow icon={<SearchIcon />} label="Поиск пользователей" onClick={() => toggleSection('userSearch')} />
             {activeSection === 'userSearch' && renderUserSearch()}
             <ActionRow icon={<PlusIcon />} label="Написать в ленту новостей" onClick={() => setNewsOpen(true)} />
           </div>
@@ -1456,7 +1175,7 @@ function Cabinet() {
     return (
       <>
         <SectionHeader title="Закупки" />
-        <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+        <div className="lk-section-group">
           <ActionRow icon={<ShoppingBagIcon />} label="Текущие закупки" badge={activeProcCount} onClick={() => toggleSection('currentPurchases')} />
           {activeSection === 'currentPurchases' && renderCurrentPurchases()}
           <ActionRow icon={<HistoryIcon />} label="История закупок" badge={procurementHistory.length} onClick={() => toggleSection('history')} />
@@ -1465,27 +1184,20 @@ function Cabinet() {
           <ActionRow icon={<RequestsIcon />} label="Мои запросы" badge={myRequests.length} onClick={() => toggleSection('myRequests')} />
           {activeSection === 'myRequests' && (
             <ContentPanel>
-              <button className="btn btn-primary btn-round" style={{ fontSize: '0.8rem', padding: '6px 14px', marginBottom: 8 }} onClick={() => setCreateRequestOpen(true)}>
+              <button className="lk-btn-invite-accept" style={{ marginBottom: 8 }} onClick={() => setCreateRequestOpen(true)}>
                 + Создать запрос
               </button>
               {myRequests.length === 0 ? (
-                <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-muted)' }}>Нет активных запросов</p>
+                <p className="lk-purchase-stats">Нет активных запросов</p>
               ) : (
                 myRequests.map((req) => (
-                  <div key={req.id} style={{ background: 'var(--tg-bg-primary)', borderRadius: 8, padding: '8px 12px', marginBottom: 6, boxShadow: 'var(--tg-shadow)' }}>
+                  <div key={req.id} className="lk-purchase-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{req.product_name}</span>
-                      <button onClick={() => handleDeleteRequest(req.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', padding: 0, fontSize: '1rem' }}>×</button>
+                      <div className="lk-purchase-name">{req.product_name}</div>
+                      <button className="lk-category-panel-close" onClick={() => handleDeleteRequest(req.id)}>×</button>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>Кол-во: {req.quantity} · {req.city}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--tg-text-secondary)', display: 'block' }}>{formatTime(req.created_at)}</span>
-                    <button
-                      className="btn btn-outline btn-round"
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', marginTop: 4 }}
-                      onClick={() => handleDeleteRequest(req.id)}
-                    >
-                      Удалить из заявки
-                    </button>
+                    <div className="lk-purchase-meta">Кол-во: {req.quantity} · {req.city}</div>
+                    <div className="lk-purchase-stats">{formatTime(req.created_at)}</div>
                   </div>
                 ))
               )}
@@ -1493,7 +1205,7 @@ function Cabinet() {
           )}
         </div>
         <SectionHeader title="Мои приглашения и сообщения" />
-        <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
+        <div className="lk-section-group">
           <ActionRow icon={<InvitationIcon />} label="Приглашения в закупки" badge={unreadInvitations} onClick={() => toggleSection('invitations')} />
           {activeSection === 'invitations' && renderInvitations()}
           <ActionRow icon={<MailIcon />} label="Сообщения" badge={unreadCount} onClick={() => toggleSection('messages')} />
@@ -1503,94 +1215,231 @@ function Cabinet() {
     );
   };
 
-  // ─── Not logged in ──────────────────────────────────────────────────────────
+  // ─── Not logged in ─────────────────────────────────────────────────────────
 
   if (!user) {
     return (
-      <div className="cabinet" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-        <p className="text-muted">Войдите для доступа к личному кабинету</p>
-        <button className="btn btn-primary" onClick={openLoginModal}>
+      <div className="lk-root" style={{ alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+        <p style={{ color: 'var(--tg-text-muted)' }}>Войдите для доступа к личному кабинету</p>
+        <button className="lk-btn-action" style={{ width: 'auto', flex: 'none', padding: '0 24px' }} onClick={openLoginModal}>
           Войти / Зарегистрироваться
         </button>
       </div>
     );
   }
 
-  // ─── Main render ────────────────────────────────────────────────────────────
+  // ─── Main render ───────────────────────────────────────────────────────────
+
+  const initials = getInitials(user.first_name, user.last_name);
+  const avatarBg = getAvatarColor(user.first_name || '');
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--tg-bg-primary)', maxWidth: 430 }}>
-      {/* Sticky top bar */}
-      <CabinetTopBar
-        user={user}
-        onDownloadApp={() => addToast('Скачать приложение', 'info')}
-        onChangeRole={() => setRoleSwitchOpen(true)}
-      />
-
-      {/* Balance button */}
-      <BalanceButton
-        balance={user.balance || 0}
-        onDeposit={openDepositModal}
-        onWithdraw={() => setWithdrawOpen(true)}
-      />
-
-      {/* LC Horizontal carousel */}
-      <LCCarousel
-        categories={LC_SLIDER_CATEGORIES}
-        activeCategory={selectedCarouselCategory?.id}
-        onSelect={handleCarouselSelect}
-      />
-
-      {/* Category page content (shown below carousel when a card is selected) */}
-      {selectedCarouselCategory && (
-        <div style={{ margin: '0 16px 8px', background: 'var(--tg-bg-secondary)', borderRadius: 10, padding: '12px 0', boxShadow: 'var(--tg-shadow)' }}>
-          <div style={{ padding: '0 16px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--tg-text-primary)' }}>
-              {selectedCarouselCategory.icon} {selectedCarouselCategory.label}
-            </span>
-            <button onClick={() => setSelectedCarouselCategory(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-text-secondary)', fontSize: '1.2rem', padding: 0 }}>×</button>
+    <div className="lk-root">
+      {/* ═══ TOP BAR (non-scrollable) ═══ */}
+      <div className="lk-topbar">
+        {/* Row 1: Avatar | Download App | Switch Role */}
+        <div className="lk-topbar-row lk-topbar-row1">
+          <button
+            className="lk-btn-avatar"
+            onClick={() => {}}
+            title={`${user.first_name} ${user.last_name || ''}`}
+          >
+            <div className="lk-avatar-circle" style={{ background: avatarBg }}>
+              {initials}
+            </div>
+          </button>
+          <div className="lk-topbar-actions">
+            <button
+              className="lk-btn-action"
+              onClick={() => addToast('Скачать приложение', 'info')}
+            >
+              <DownloadAppSvg />
+              Скачать приложение
+            </button>
+            <button
+              className="lk-btn-action lk-btn-action--outline"
+              onClick={() => setRoleSwitchOpen(true)}
+            >
+              Сменить роль
+            </button>
           </div>
-          <CategoryPageContent
-            category={selectedCarouselCategory}
-            procurements={myProcurements}
-            user={user}
-            newsFeed={newsFeed}
-            newsFeedLoading={newsFeedLoading}
-            onLoadNewsFeed={handleLoadNewsFeed}
-            navigate={navigate}
+        </div>
+
+        {/* Row 2: Balance */}
+        <div className="lk-topbar-row lk-topbar-row2">
+          <button className="lk-btn-balance" onClick={openDepositModal}>
+            <BankSvg />
+            Баланс: {formatCurrency(user.balance || 0)}
+          </button>
+        </div>
+
+        {/* Row 3: Horizontal slider carousel (7 cards) */}
+        <div className="lk-slider-wrapper">
+          <div
+            className="lk-slider-track"
+            ref={sliderTrackRef}
+            onScroll={handleSliderScroll}
+          >
+            {LC_SLIDER_CATEGORIES.map((cat) => (
+              <div
+                key={cat.id}
+                className={`lk-card${selectedCarouselCategory?.id === cat.id ? ' active' : ''}`}
+                onClick={() => handleCarouselSelect(cat)}
+              >
+                <div className="lk-card-title">{cat.label}</div>
+                <div className="lk-card-desc">{cat.description}</div>
+              </div>
+            ))}
+          </div>
+          {/* Slider dots */}
+          <div className="lk-slider-dots">
+            {LC_SLIDER_CATEGORIES.map((_, idx) => (
+              <span
+                key={idx}
+                className={`lk-dot${idx === activeDot ? ' active' : ''}`}
+                onClick={() => scrollToCard(idx)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ SCROLLABLE BODY ═══ */}
+      <div className="lk-body">
+        {/* Category panel (shown below topbar when a card is selected) */}
+        {selectedCarouselCategory && (
+          <div className="lk-category-panel">
+            <div className="lk-category-panel-header">
+              <span className="lk-category-panel-title">
+                {selectedCarouselCategory.label}
+              </span>
+              <button className="lk-category-panel-close" onClick={() => setSelectedCarouselCategory(null)}>×</button>
+            </div>
+            <CategoryPageContent
+              category={selectedCarouselCategory}
+              procurements={myProcurements}
+              user={user}
+              newsFeed={newsFeed}
+              newsFeedLoading={newsFeedLoading}
+              onLoadNewsFeed={handleLoadNewsFeed}
+              navigate={navigate}
+            />
+          </div>
+        )}
+
+        {/* Search bar */}
+        <div className="lk-section-block">
+          <div className="lk-search-bar" style={{ margin: 0 }}>
+            <div className="lk-search-bar-icon"><SearchIcon /></div>
+            <input
+              type="text"
+              className="lk-search-input"
+              placeholder="Поиск..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Messages section */}
+        <div className="lk-section-block">
+          <div className="lk-section-title">Сообщения</div>
+          <div className="lk-messages-list">
+            {messages.length === 0 ? (
+              <p className="lk-purchase-stats" style={{ padding: '8px 0' }}>Нет новых сообщений</p>
+            ) : (
+              messages.slice(0, 3).map((m) => (
+                <div
+                  key={m.id}
+                  className="lk-message-item"
+                  onClick={() => { handleMarkMessageRead(m.id); setReplyTarget(m); }}
+                >
+                  <div className="lk-message-avatar" style={{ background: getAvatarColor(m.from) }}>
+                    {getInitials(m.from, '')}
+                  </div>
+                  <div className="lk-message-info">
+                    <div className="lk-message-row">
+                      <span className="lk-message-name">{m.from}</span>
+                      <span className="lk-message-time">{formatTime(m.date)}</span>
+                    </div>
+                    <div className="lk-message-text">{m.text}</div>
+                  </div>
+                  {!m.read && <span className="lk-message-badge">!</span>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Invitations section */}
+        <div className="lk-section-block">
+          <div className="lk-section-title">Приглашения</div>
+          <div className="lk-messages-list">
+            {invitations.length === 0 ? (
+              <p className="lk-purchase-stats" style={{ padding: '8px 0' }}>Нет новых приглашений</p>
+            ) : (
+              invitations.slice(0, 3).map((inv) => (
+                <div
+                  key={inv.id}
+                  className="lk-message-item"
+                  onClick={() => {
+                    handleMarkInvitationRead(inv.id);
+                    if (inv.procurement_id) navigate(`/chat/${inv.procurement_id}`);
+                  }}
+                >
+                  <div className="lk-message-avatar" style={{ background: getAvatarColor(inv.from) }}>
+                    {getInitials(inv.from, '')}
+                  </div>
+                  <div className="lk-message-info">
+                    <div className="lk-message-row">
+                      <span className="lk-message-name">{inv.from}</span>
+                      <span className="lk-message-time">{formatTime(inv.date)}</span>
+                    </div>
+                    <div className="lk-message-text">{inv.text}</div>
+                  </div>
+                  {inv.procurement_id && (
+                    <button
+                      className="lk-btn-invite-accept"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/chat/${inv.procurement_id}`); }}
+                    >
+                      Принять
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Role-specific rows */}
+        {renderRoleRows()}
+
+        {/* Subscriptions section (common) */}
+        <SectionHeader title="Подписки" />
+        <div className="lk-section-group">
+          <ActionRow icon={<HistoryIcon />} label="Управление подписками" badge={subscriptions.filter((s) => s.active).length} onClick={() => toggleSection('subscriptions')} />
+          {activeSection === 'subscriptions' && renderSubscriptions()}
+        </div>
+
+        {/* Settings */}
+        <SectionHeader title="Настройки" />
+        <div className="lk-section-group">
+          <ActionRow icon={<SettingsIcon />} label="Тема и шрифт" onClick={() => toggleSection('settings')} />
+          {activeSection === 'settings' && renderSettings()}
+        </div>
+
+        {/* Logout */}
+        <div className="lk-section-group" style={{ marginBottom: 24 }}>
+          <ActionRow
+            danger
+            icon={<LogoutSvg />}
+            label="Выйти"
+            onClick={logout}
           />
         </div>
-      )}
-
-      {/* Telegram-style search bar */}
-      <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Поиск в личном кабинете..." />
-
-      {/* Role-specific rows */}
-      {renderRoleRows()}
-
-      {/* Subscriptions section (common) */}
-      <SectionHeader title="Подписки" />
-      <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
-        <ActionRow icon={<HistoryIcon />} label="Управление подписками" badge={subscriptions.filter((s) => s.active).length} onClick={() => toggleSection('subscriptions')} />
-        {activeSection === 'subscriptions' && renderSubscriptions()}
       </div>
 
-      {/* Settings */}
-      <SectionHeader title="Настройки" />
-      <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 8px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
-        <ActionRow icon={<SettingsIcon />} label="Тема и шрифт" onClick={() => toggleSection('settings')} />
-        {activeSection === 'settings' && renderSettings()}
-      </div>
-
-      {/* Logout */}
-      <div style={{ background: 'var(--tg-bg-secondary)', borderRadius: 10, margin: '0 16px 24px', overflow: 'hidden', boxShadow: 'var(--tg-shadow)' }}>
-        <ActionRow
-          danger
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>}
-          label="Выйти"
-          onClick={logout}
-        />
-      </div>
+      {/* ═══ MODALS ═══ */}
 
       {/* Role switch modal */}
       {roleSwitchOpen && (
@@ -1608,8 +1457,8 @@ function Cabinet() {
               ].map(({ value, label }) => (
                 <button
                   key={value}
-                  className={`btn btn-round ${user.role === value ? 'btn-primary' : 'btn-outline'}`}
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 16px' }}
+                  className={`lk-btn-action${user.role === value ? '' : ' lk-btn-action--outline'}`}
+                  style={{ height: 44 }}
                   onClick={() => handleRoleSwitch(value)}
                 >
                   {label}{user.role === value && ' (текущая)'}
@@ -1620,7 +1469,6 @@ function Cabinet() {
         </div>
       )}
 
-      {/* Modals */}
       <CompanyCardModal isOpen={companyCardOpen} onClose={() => setCompanyCardOpen(false)} onSave={handleSaveCompanyCard} />
       <PriceListModal isOpen={priceListOpen} onClose={() => setPriceListOpen(false)} onSave={handleSavePriceList} />
       <NewsModal isOpen={newsOpen} onClose={() => setNewsOpen(false)} onSave={handleSaveNews} />
@@ -1638,35 +1486,36 @@ function Cabinet() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {approveSupplierProcurement && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-secondary)', margin: 0 }}>
+                <p className="lk-purchase-meta" style={{ margin: 0 }}>
                   Закупка: <strong>{approveSupplierProcurement.title}</strong>
                 </p>
               )}
               <div>
-                <label style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 4 }}>Поиск поставщика</label>
+                <label className="lk-purchase-stats" style={{ display: 'block', marginBottom: 4 }}>Поиск поставщика</label>
                 <input
                   type="text"
-                  className="form-input"
-                  style={{ fontSize: '0.85rem', padding: '7px 12px', width: '100%' }}
+                  className="lk-search-input"
+                  style={{ paddingLeft: 12, borderRadius: 8 }}
                   placeholder="Имя, компания, email..."
                   value={supplierSearchQuery}
                   onChange={(e) => handleSupplierSearch(e.target.value)}
                   autoFocus
                 />
-                {supplierSearchLoading && <p style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', margin: '4px 0 0' }}>Поиск...</p>}
+                {supplierSearchLoading && <p className="lk-purchase-stats" style={{ marginTop: 4 }}>Поиск...</p>}
                 {supplierSearchResults.length > 0 && (
-                  <div style={{ border: '1px solid var(--tg-border)', borderRadius: 8, marginTop: 4, overflow: 'hidden' }}>
+                  <div className="lk-messages-list" style={{ border: '1px solid var(--tg-border-light)', borderRadius: 8, marginTop: 4, overflow: 'hidden' }}>
                     {supplierSearchResults.map((s) => (
                       <div
                         key={s.id}
-                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--tg-border)', display: 'flex', alignItems: 'center', gap: 8 }}
+                        className="lk-message-item"
                         onClick={() => handleApproveSupplierSubmit(s)}
+                        style={{ padding: '8px 12px' }}
                       >
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{s.first_name || ''} {s.last_name || ''}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>{s.email || s.phone || 'Поставщик'}</div>
+                        <div className="lk-message-info">
+                          <div className="lk-message-name">{s.first_name || ''} {s.last_name || ''}</div>
+                          <div className="lk-message-text">{s.email || s.phone || 'Поставщик'}</div>
                         </div>
-                        <span style={{ fontSize: '0.7rem', background: 'rgba(52,168,240,0.12)', color: '#34A8F0', borderRadius: 4, padding: '2px 6px' }}>
+                        <span className="lk-message-badge" style={{ background: 'rgba(36,129,204,0.12)', color: 'var(--tg-primary)', fontSize: 11 }}>
                           Одобрить
                         </span>
                       </div>
@@ -1674,11 +1523,11 @@ function Cabinet() {
                   </div>
                 )}
                 {!supplierSearchLoading && supplierSearchQuery.trim() && supplierSearchResults.length === 0 && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--tg-text-muted)', marginTop: 4 }}>Поставщики не найдены</p>
+                  <p className="lk-purchase-stats" style={{ marginTop: 4 }}>Поставщики не найдены</p>
                 )}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="btn btn-outline btn-round" onClick={() => setApproveSupplierOpen(false)}>Отмена</button>
+                <button className="lk-btn-action lk-btn-action--outline" style={{ height: 36, flex: 'none', padding: '0 16px' }} onClick={() => setApproveSupplierOpen(false)}>Отмена</button>
               </div>
             </div>
           </div>
@@ -1695,44 +1544,54 @@ function Cabinet() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {addParticipantProcurement && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--tg-text-secondary)', margin: 0 }}>
+                <p className="lk-purchase-meta" style={{ margin: 0 }}>
                   Закупка: <strong>{addParticipantProcurement.title}</strong>
                 </p>
               )}
               <div>
-                <label style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 4 }}>Поиск пользователя</label>
-                <input type="text" className="form-input" style={{ fontSize: '0.85rem', padding: '7px 12px', width: '100%' }} placeholder="Имя, email, телефон..." value={addParticipantUserQuery} onChange={(e) => handleAddParticipantSearch(e.target.value)} autoFocus />
-                {addParticipantLoading && <p style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', margin: '4px 0 0' }}>Поиск...</p>}
+                <label className="lk-purchase-stats" style={{ display: 'block', marginBottom: 4 }}>Поиск пользователя</label>
+                <input
+                  type="text"
+                  className="lk-search-input"
+                  style={{ paddingLeft: 12, borderRadius: 8 }}
+                  placeholder="Имя, email, телефон..."
+                  value={addParticipantUserQuery}
+                  onChange={(e) => handleAddParticipantSearch(e.target.value)}
+                  autoFocus
+                />
+                {addParticipantLoading && <p className="lk-purchase-stats" style={{ marginTop: 4 }}>Поиск...</p>}
                 {addParticipantResults.length > 0 && !addParticipantSelected && (
-                  <div style={{ border: '1px solid var(--tg-border)', borderRadius: 8, marginTop: 4, overflow: 'hidden' }}>
+                  <div className="lk-messages-list" style={{ border: '1px solid var(--tg-border-light)', borderRadius: 8, marginTop: 4, overflow: 'hidden' }}>
                     {addParticipantResults.map((u) => (
-                      <div key={u.id} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--tg-border)', display: 'flex', alignItems: 'center', gap: 8 }}
+                      <div key={u.id} className="lk-message-item" style={{ padding: '8px 12px' }}
                         onClick={() => { setAddParticipantSelected(u); setAddParticipantUserQuery(`${u.first_name || ''} ${u.last_name || ''}`.trim()); setAddParticipantResults([]); }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{u.first_name || ''} {u.last_name || ''}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)', marginLeft: 'auto' }}>{u.email || u.phone || getRoleText(u.role)}</div>
+                        <div className="lk-message-info">
+                          <div className="lk-message-name">{u.first_name || ''} {u.last_name || ''}</div>
+                          <div className="lk-message-text">{u.email || u.phone || getRoleText(u.role)}</div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
                 {addParticipantSelected && (
                   <div style={{ marginTop: 4, fontSize: '0.75rem', color: 'var(--tg-success)' }}>
-                    ✓ Выбран: {addParticipantSelected.first_name} {addParticipantSelected.last_name || ''} ({addParticipantSelected.email || addParticipantSelected.phone || `ID ${addParticipantSelected.id}`})
+                    ✓ Выбран: {addParticipantSelected.first_name} {addParticipantSelected.last_name || ''}
                   </div>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 4 }}>Количество</label>
-                  <input type="number" className="form-input" style={{ fontSize: '0.85rem', padding: '7px 12px', width: '100%' }} min="0.01" step="0.01" value={addParticipantQuantity} onChange={(e) => setAddParticipantQuantity(e.target.value)} />
+                  <label className="lk-purchase-stats" style={{ display: 'block', marginBottom: 4 }}>Количество</label>
+                  <input type="number" className="lk-search-input" style={{ paddingLeft: 12, borderRadius: 8 }} min="0.01" step="0.01" value={addParticipantQuantity} onChange={(e) => setAddParticipantQuantity(e.target.value)} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '0.8rem', color: 'var(--tg-text-secondary)', display: 'block', marginBottom: 4 }}>Сумма (₽)</label>
-                  <input type="number" className="form-input" style={{ fontSize: '0.85rem', padding: '7px 12px', width: '100%' }} min="0" step="0.01" placeholder="0.00" value={addParticipantAmount} onChange={(e) => setAddParticipantAmount(e.target.value)} />
+                  <label className="lk-purchase-stats" style={{ display: 'block', marginBottom: 4 }}>Сумма (₽)</label>
+                  <input type="number" className="lk-search-input" style={{ paddingLeft: 12, borderRadius: 8 }} min="0" step="0.01" placeholder="0.00" value={addParticipantAmount} onChange={(e) => setAddParticipantAmount(e.target.value)} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-outline btn-round" onClick={() => setAddParticipantOpen(false)}>Отмена</button>
-                <button className="btn btn-primary btn-round" disabled={!addParticipantSelected || !addParticipantAmount} onClick={handleAddParticipantSubmit}>Добавить</button>
+                <button className="lk-btn-action lk-btn-action--outline" style={{ height: 36, flex: 'none', padding: '0 16px' }} onClick={() => setAddParticipantOpen(false)}>Отмена</button>
+                <button className="lk-btn-action" style={{ height: 36, flex: 'none', padding: '0 16px' }} disabled={!addParticipantSelected || !addParticipantAmount} onClick={handleAddParticipantSubmit}>Добавить</button>
               </div>
             </div>
           </div>
