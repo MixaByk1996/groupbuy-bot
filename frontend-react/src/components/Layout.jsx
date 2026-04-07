@@ -3,11 +3,11 @@ import { useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import Sidebar from './Sidebar';
 import ProcurementSlider from './ProcurementSlider';
-import { MenuIcon } from './Icons';
+import { BurgerMenuIcon } from './Icons';
 
 function Layout({ children }) {
   const location = useLocation();
-  const { user, sidebarOpen, toggleSidebar, closeSidebar, loadProcurements, openLoginModal } = useStore();
+  const { user, sidebarOpen, toggleSidebar, closeSidebar, toggleBurgerMenu, loadProcurements, openLoginModal } = useStore();
   const isChatView = location.pathname.startsWith('/chat/');
 
   useEffect(() => {
@@ -32,11 +32,11 @@ function Layout({ children }) {
         {!isChatView && (
           <header className="header mobile-header">
             <button
-              className="btn btn-icon menu-toggle"
+              className="btn btn-icon burger-btn"
               aria-label="Menu"
-              onClick={toggleSidebar}
+              onClick={toggleBurgerMenu}
             >
-              <MenuIcon />
+              <BurgerMenuIcon />
             </button>
             <h1 className="header-title">GroupBuy</h1>
           </header>

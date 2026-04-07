@@ -2301,3 +2301,243 @@ input, textarea, select {
   .lk-card { width: 200px; height: 90px; }
   .lk-btn-action { font-size: 12px; padding: 0 8px; }
 }
+
+/* ============================================
+   BURGER BUTTON
+   ============================================ */
+
+.burger-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tg-radius-sm); /* 6px per spec */
+  color: var(--tg-text-primary);
+  transition: background-color var(--tg-transition);
+  flex-shrink: 0;
+}
+
+.burger-btn:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .burger-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.burger-btn:focus-visible {
+  outline: 2px solid var(--tg-primary);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   BURGER MENU OVERLAY
+   ============================================ */
+
+.burger-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  /* NO backdrop blur per spec */
+}
+
+/* ============================================
+   BURGER MENU PANEL — 300px slide from left
+   ============================================ */
+
+.burger-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 100%;
+  background-color: var(--tg-bg-primary); /* #fff light / #1c1c1e dark */
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 0 10px 10px 0; /* 0px left, 10px right per spec */
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  animation: burgerSlideIn 0.2s ease-out;
+}
+
+@keyframes burgerSlideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* ============================================
+   BURGER MENU — USER SECTION
+   ============================================ */
+
+.burger-user-section {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-spacing-md);
+  padding: var(--tg-spacing-lg);
+  padding-top: 20px;
+}
+
+.burger-user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 30px; /* per spec: radius 30px */
+  background-color: var(--tg-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--tg-font-size-xl);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.burger-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.burger-user-name {
+  font-size: var(--tg-font-size-md);
+  font-weight: 500;
+  color: var(--tg-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.burger-user-sub {
+  font-size: var(--tg-font-size-sm);
+  color: var(--tg-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================
+   BURGER MENU — DIVIDER
+   ============================================ */
+
+.burger-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: var(--tg-spacing-xs) 0;
+}
+
+[data-theme="dark"] .burger-divider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================
+   BURGER MENU — ITEMS
+   ============================================ */
+
+.burger-menu-list {
+  list-style: none;
+  padding: var(--tg-spacing-xs) 0;
+}
+
+.burger-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--tg-spacing-lg);
+  width: 100%;
+  height: 48px; /* per spec */
+  padding: 0 16px; /* per spec */
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--tg-font-size-base);
+  color: var(--tg-text-primary);
+  text-align: left;
+  transition: background-color var(--tg-transition);
+}
+
+.burger-menu-item svg {
+  flex-shrink: 0;
+  color: var(--tg-text-secondary);
+}
+
+.burger-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .burger-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.burger-menu-item:focus-visible {
+  outline: 2px solid var(--tg-primary);
+  outline-offset: -2px;
+  background-color: rgba(51, 144, 236, 0.1);
+}
+
+/* Active / selected state */
+.burger-menu-item--active {
+  background-color: rgba(51, 144, 236, 0.1);
+  color: var(--tg-primary);
+}
+
+.burger-menu-item--active svg {
+  color: var(--tg-primary);
+}
+
+/* Danger (logout) */
+.burger-menu-item--danger {
+  color: var(--tg-error);
+}
+
+.burger-menu-item--danger svg {
+  color: var(--tg-error);
+}
+
+.burger-menu-item--danger:hover {
+  background-color: rgba(255, 59, 48, 0.08);
+}
+
+/* Toggle item — night mode */
+.burger-menu-item--toggle {
+  justify-content: flex-start;
+}
+
+.burger-menu-item--toggle span:first-of-type {
+  flex: 1;
+}
+
+/* ============================================
+   BURGER MENU — TOGGLE SWITCH (night mode)
+   ============================================ */
+
+.burger-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background-color: var(--tg-border);
+  position: relative;
+  flex-shrink: 0;
+  transition: background-color var(--tg-transition);
+}
+
+.burger-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  transition: transform var(--tg-transition);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.burger-toggle--on {
+  background-color: var(--tg-primary);
+}
+
+.burger-toggle--on::after {
+  transform: translateX(16px);
+}
