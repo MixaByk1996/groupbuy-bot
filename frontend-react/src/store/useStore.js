@@ -30,6 +30,9 @@ export const useStore = create((set, get) => ({
   // Sidebar state (mobile)
   sidebarOpen: false,
 
+  // Burger menu state
+  burgerMenuOpen: false,
+
   // Actions - User
   loadUser: async (userId) => {
     set({ isLoading: true, error: null });
@@ -288,6 +291,10 @@ export const useStore = create((set, get) => ({
   // Actions - Sidebar
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   closeSidebar: () => set({ sidebarOpen: false }),
+
+  // Actions - Burger menu
+  toggleBurgerMenu: () => set({ burgerMenuOpen: !get().burgerMenuOpen }),
+  closeBurgerMenu: () => set({ burgerMenuOpen: false }),
 
   // Actions - Toast
   addToast: (message, type = 'info') => {

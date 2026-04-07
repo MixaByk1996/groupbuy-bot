@@ -14,12 +14,13 @@ function firstWords(text, n) {
 }
 
 import {
-  MenuIcon,
+  BurgerMenuIcon,
   SunIcon,
   MoonIcon,
   SearchIcon,
   LogoutIcon,
 } from './Icons';
+import BurgerMenu from './BurgerMenu';
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ function Sidebar() {
     closeSidebar,
     theme,
     toggleTheme,
+    toggleBurgerMenu,
     setCurrentChat,
     logout,
   } = useStore();
@@ -63,14 +65,16 @@ function Sidebar() {
   const activeTab = location.pathname.includes('/cabinet') ? 'cabinet' : 'chats';
 
   return (
+    <>
+    <BurgerMenu />
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
       <header className="header">
         <button
-          className="btn btn-icon menu-toggle"
+          className="btn btn-icon burger-btn"
           aria-label="Menu"
-          onClick={toggleSidebar}
+          onClick={toggleBurgerMenu}
         >
-          <MenuIcon />
+          <BurgerMenuIcon />
         </button>
         <h1 className="header-title">GroupBuy</h1>
         {!user && (
@@ -182,6 +186,7 @@ function Sidebar() {
         </div>
       )}
     </aside>
+    </>
   );
 }
 
