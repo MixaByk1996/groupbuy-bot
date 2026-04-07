@@ -41,8 +41,8 @@
     --spacing-lg:  16px;
     --spacing-xl:  24px;
 
-    /* Button heights — touch target min 44px */
-    --btn-height:   48px;
+    /* Button heights — two text lines = 56-60pt per spec */
+    --btn-height:   56px;
     /* Slider card sizes */
     --card-width:   280px;
     --card-height:  104px;
@@ -231,7 +231,7 @@ a { color: var(--text-link); text-decoration: none; }
     align-items: stretch;
     gap: var(--spacing-sm);
     flex: 1;
-    flex-direction: column;
+    flex-direction: row;
 }
 .btn-action {
     display: inline-flex;
