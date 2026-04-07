@@ -131,69 +131,34 @@ function CabinetTopBar({ user, onDownloadApp, onChangeRole }) {
   const initials = getInitials(user.first_name, user.last_name);
   const avatarBg = getAvatarColor(user.first_name || '');
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '10px 16px',
-      background: 'var(--tg-bg-primary)',
-      borderBottom: '1px solid var(--tg-border-light)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
-    }}>
+    <div className="lc-topbar">
       {/* Avatar button */}
       <button
         onClick={() => {}}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          background: avatarBg,
-          color: '#fff',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1rem',
-          fontWeight: 700,
-          flexShrink: 0,
-        }}
+        className="lc-topbar__avatar"
+        style={{ background: avatarBg }}
         title={`${user.first_name} ${user.last_name || ''}`}
       >
         {initials}
       </button>
 
-      {/* User name */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--tg-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {user.first_name} {user.last_name || ''}
-        </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--tg-text-secondary)' }}>
-          {getRoleText(user.role)}
-        </div>
+      {/* Action buttons: stack vertically on mobile, row on wider screens */}
+      <div className="lc-topbar__actions">
+        <button
+          className="lc-topbar__btn lc-topbar__btn--primary"
+          onClick={onDownloadApp}
+        >
+          <CloudDownloadIcon />
+          <span>Скачать приложение</span>
+        </button>
+        <button
+          className="lc-topbar__btn lc-topbar__btn--outline"
+          onClick={onChangeRole}
+        >
+          <SwapRoleIcon />
+          <span>Сменить роль</span>
+        </button>
       </div>
-
-      {/* Download App button */}
-      <button
-        className="lc-top-btn"
-        onClick={onDownloadApp}
-        title="Скачать приложение"
-      >
-        <CloudDownloadIcon />
-        <span>Приложение</span>
-      </button>
-
-      {/* Change Role button */}
-      <button
-        className="lc-top-btn lc-top-btn--accent"
-        onClick={onChangeRole}
-        title="Сменить роль"
-      >
-        <SwapRoleIcon />
-        <span>Роль</span>
-      </button>
     </div>
   );
 }
