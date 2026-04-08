@@ -65,6 +65,15 @@ export class User {
   @Column({ name: 'last_login_at', type: 'timestamp with time zone', nullable: true })
   lastLoginAt: Date | null;
 
+  @Column({ name: 'is_banned', default: false })
+  isBanned: boolean;
+
+  @Column({ name: 'banned_at', type: 'timestamp with time zone', nullable: true })
+  bannedAt: Date | null;
+
+  @Column({ name: 'ban_reason', type: 'text', nullable: true })
+  banReason: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 

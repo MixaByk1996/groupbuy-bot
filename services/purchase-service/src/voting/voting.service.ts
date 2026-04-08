@@ -178,8 +178,10 @@ export class VotingService {
     if (!candidate) throw new NotFoundException('Candidate not found in this session');
 
     return this.dataSource.transaction(async (manager) => {
+      // Use pessimistic write lock to prevent race conditions on simultaneous votes
       const existing = await manager.findOne(Vote, {
         where: { votingSessionId: sessionId, userId },
+        lock: { mode: 'pessimistic_write' },
       });
 
       if (existing) {
@@ -311,6 +313,15 @@ export class VotingService {
 
   private async doCloseSession(session: VotingSession): Promise<VotingSession> {
     return this.dataSource.transaction(async (manager) => {
+      // Lock the session row to prevent concurrent close operations
+      const lockedSession = await manager.findOne(VotingSession, {
+        where: { id: session.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedSession || lockedSession.status !== VotingStatus.OPEN) {
+        // Already closed by a concurrent request; return current state
+        return lockedSession ?? session;
+      }
       // Find winner by simple majority
       const votes = await manager.find(Vote, { where: { votingSessionId: session.id } });
       const countMap = new Map<string, number>();
@@ -338,38 +349,38 @@ export class VotingService {
 
       if (isTie) {
         // Tie detected: do not set a winner, emit tie event
-        session.status = VotingStatus.CLOSED;
-        session.winnerCandidateId = null;
-        const saved = await manager.save(VotingSession, session);
+        lockedSession.status = VotingStatus.CLOSED;
+        lockedSession.winnerCandidateId = null;
+        const saved = await manager.save(VotingSession, lockedSession);
 
         await this.kafkaProducer.send('voting.tie', {
-          sessionId: session.id,
-          purchaseId: session.purchaseId,
+          sessionId: lockedSession.id,
+          purchaseId: lockedSession.purchaseId,
           tiedCandidateIds,
           voteCount: maxVotes,
           totalVotes: votes.length,
         });
 
         this.logger.warn(
-          `Tie detected in session ${session.id} between candidates: ${tiedCandidateIds.join(', ')}`,
+          `Tie detected in session ${lockedSession.id} between candidates: ${tiedCandidateIds.join(', ')}`,
         );
 
         return saved;
       }
 
-      session.status = VotingStatus.CLOSED;
-      session.winnerCandidateId = winnerId;
-      const saved = await manager.save(VotingSession, session);
+      lockedSession.status = VotingStatus.CLOSED;
+      lockedSession.winnerCandidateId = winnerId;
+      const saved = await manager.save(VotingSession, lockedSession);
 
       // Update purchase status
-      await manager.update(Purchase, session.purchaseId, {
+      await manager.update(Purchase, lockedSession.purchaseId, {
         status: winnerId ? PurchaseStatus.APPROVED : PurchaseStatus.CANCELLED,
         closedAt: new Date(),
       });
 
       await this.kafkaProducer.send('purchase.voting.closed', {
-        sessionId: session.id,
-        purchaseId: session.purchaseId,
+        sessionId: lockedSession.id,
+        purchaseId: lockedSession.purchaseId,
         winnerId,
         totalVotes: votes.length,
       });

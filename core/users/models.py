@@ -51,6 +51,10 @@ class User(models.Model):
     language_code = models.CharField(max_length=10, default='ru')
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
+    # Ban fields — cached in Redis (10 s TTL) to protect DB from DDoS/scraping
+    is_banned = models.BooleanField(default=False, db_index=True)
+    banned_at = models.DateTimeField(null=True, blank=True)
+    ban_reason = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
