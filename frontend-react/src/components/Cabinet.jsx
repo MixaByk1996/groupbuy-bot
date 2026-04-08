@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { api } from '../services/api';
+import { batchProcessMessages } from '../services/wasm';
 import {
   formatCurrency,
   formatTime,
@@ -10,6 +12,7 @@ import {
   getRoleText,
   getStatusText,
 } from '../utils/helpers';
+import { SendIcon, AttachIcon } from './Icons';
 import {
   RequestsIcon,
   ShoppingBagIcon,
@@ -208,6 +211,192 @@ function CategoryPageContent({ category, procurements, user, newsFeed, newsFeedL
     <div>
       <p className="lk-purchase-meta" style={{ padding: '4px 0' }}>{category.description}</p>
       <p className="lk-purchase-stats">Раздел разрабатывается...</p>
+    </div>
+  );
+}
+
+// ─── Telegram-style two-panel chat section ──────────────────────────────────
+
+function CabinetChatSection() {
+  const {
+    user,
+    procurements,
+    messages,
+    currentChat,
+    unreadCounts,
+    setCurrentChat,
+    loadMessages,
+    sendMessage,
+  } = useStore();
+
+  const [messageText, setMessageText] = useState('');
+  const messageAreaRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Connect WebSocket for the active chat
+  const { sendTyping } = useWebSocket(currentChat);
+
+  const activeProcurement = procurements.find((p) => p.id === currentChat) || null;
+
+  // Load messages when active chat changes
+  useEffect(() => {
+    if (currentChat) {
+      loadMessages(currentChat);
+    }
+  }, [currentChat, loadMessages]);
+
+  // Auto-scroll to bottom when messages update
+  useEffect(() => {
+    if (messageAreaRef.current) {
+      messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSelectChat = useCallback((procurement) => {
+    setCurrentChat(procurement.id);
+  }, [setCurrentChat]);
+
+  const handleSend = useCallback(async () => {
+    const text = messageText.trim();
+    if (!text || !user) return;
+    setMessageText('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    await sendMessage(text);
+  }, [messageText, user, sendMessage]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleInput = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+    sendTyping();
+  };
+
+  const processedMessages = useMemo(() => {
+    if (!messages || messages.length === 0) return [];
+    return batchProcessMessages(messages, user?.id || 0);
+  }, [messages, user?.id]);
+
+  return (
+    <div className="lk-chat-panel">
+      {/* Left: conversation list */}
+      <div className="lk-chat-list-col">
+        <div className="lk-chat-list-header">Чаты</div>
+        {procurements.length === 0 ? (
+          <p className="lk-purchase-stats" style={{ padding: '12px 16px' }}>Нет активных закупок</p>
+        ) : (
+          procurements.map((p) => (
+            <div
+              key={p.id}
+              className={`lk-chat-list-item${currentChat === p.id ? ' active' : ''}`}
+              onClick={() => handleSelectChat(p)}
+            >
+              <div className="chat-avatar" style={{ backgroundColor: getAvatarColor(p.title), flexShrink: 0 }}>
+                {getInitials(p.title)}
+              </div>
+              <div className="chat-info">
+                <div className="chat-header">
+                  <span className="chat-title">{p.title}</span>
+                  <span className="chat-time">{formatTime(p.updated_at)}</span>
+                </div>
+                <div className="chat-message">
+                  {p.description
+                    ? (p.description.length > 40 ? p.description.slice(0, 40) + '…' : p.description)
+                    : `${p.participant_count || 0} участников`}
+                </div>
+              </div>
+              {unreadCounts[p.id] > 0 && (
+                <div className="chat-badge">{unreadCounts[p.id]}</div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Right: active chat pane */}
+      <div className="lk-chat-view-col">
+        {!currentChat || !activeProcurement ? (
+          <div className="lk-chat-empty">
+            <p>Выберите чат для просмотра</p>
+          </div>
+        ) : (
+          <>
+            {/* Chat header */}
+            <div className="lk-chat-view-header">
+              <div className="chat-avatar" style={{ backgroundColor: getAvatarColor(activeProcurement.title), flexShrink: 0 }}>
+                {getInitials(activeProcurement.title)}
+              </div>
+              <div className="flex-col">
+                <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{activeProcurement.title}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {activeProcurement.participant_count || 0} участников
+                </span>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="message-area" ref={messageAreaRef}>
+              {processedMessages.length === 0 ? (
+                <div className="p-lg text-center text-muted"><p>Нет сообщений</p></div>
+              ) : (
+                processedMessages.map((msg, index) => {
+                  const items = [];
+                  if (msg.date_divider) {
+                    items.push(
+                      <div key={`date-${index}`} className="message-date-divider">
+                        <span>{msg.date_divider}</span>
+                      </div>
+                    );
+                  }
+                  if (msg.is_system) {
+                    items.push(
+                      <div key={msg.id || index} className="message system">{msg.text}</div>
+                    );
+                  } else {
+                    items.push(
+                      <div key={msg.id || index} className={`message ${msg.is_own ? 'outgoing' : 'incoming'}`}>
+                        {!msg.is_own && msg.sender_name && (
+                          <div className="message-sender">{msg.sender_name}</div>
+                        )}
+                        <div className="message-text" dangerouslySetInnerHTML={{ __html: msg.formatted_text }} />
+                        <div className="message-time">{msg.formatted_time}</div>
+                      </div>
+                    );
+                  }
+                  return items;
+                })
+              )}
+            </div>
+
+            {/* Input area */}
+            <div className="message-input-area">
+              <button className="btn btn-icon" aria-label="Attach file"><AttachIcon /></button>
+              <div className="message-input-container">
+                <textarea
+                  ref={textareaRef}
+                  className="message-input"
+                  placeholder="Сообщение..."
+                  rows="1"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onInput={handleInput}
+                />
+              </div>
+              <button className="send-button" aria-label="Send message" onClick={handleSend}>
+                <SendIcon />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1385,6 +1574,11 @@ function Cabinet() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Two-panel chat section (Telegram-style) */}
+        <div className="lk-section-block" style={{ padding: 0 }}>
+          <CabinetChatSection />
         </div>
 
         {/* Messages section */}

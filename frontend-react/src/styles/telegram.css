@@ -1978,6 +1978,98 @@ input, textarea, select {
   .burger-divider.burger-mobile-only { display: block; }
 }
 
+/* ============================================
+   Cabinet two-panel chat (Telegram-style)
+   ============================================ */
+
+.lk-chat-panel {
+  display: flex;
+  height: 480px;
+  border-top: 1px solid var(--tg-border-light);
+  overflow: hidden;
+}
+
+/* Left column: conversation list */
+.lk-chat-list-col {
+  width: 220px;
+  min-width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--tg-border-light);
+  background: var(--tg-bg-primary);
+  overflow-y: auto;
+}
+
+.lk-chat-list-header {
+  padding: 10px 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tg-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--tg-border-light);
+  flex-shrink: 0;
+}
+
+.lk-chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--tg-border-light);
+}
+.lk-chat-list-item:hover { background: var(--tg-bg-secondary); }
+.lk-chat-list-item.active { background: var(--tg-hover); }
+.lk-chat-list-item.active .chat-title { color: var(--tg-primary); }
+
+/* Right column: active chat view */
+.lk-chat-view-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--tg-bg-chat);
+}
+
+.lk-chat-view-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--tg-bg-primary);
+  border-bottom: 1px solid var(--tg-border-light);
+  flex-shrink: 0;
+}
+
+.lk-chat-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tg-text-muted);
+  font-size: 14px;
+}
+
+/* On mobile: stack vertically, show only list unless a chat is selected */
+@media (max-width: 600px) {
+  .lk-chat-panel {
+    flex-direction: column;
+    height: auto;
+  }
+  .lk-chat-list-col {
+    width: 100%;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid var(--tg-border-light);
+  }
+  .lk-chat-view-col {
+    min-height: 300px;
+  }
+}
+
 @media (max-width: 360px) {
   .lk-card { width: 200px; height: 90px; }
   .lk-btn-action { font-size: 12px; padding: 0 8px; }
