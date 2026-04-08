@@ -266,13 +266,37 @@ export const useStore = create((set, get) => ({
   },
 
   addMessage: (message) => {
-    const messages = [...get().messages, message];
-    set({ messages });
+    const { currentChat, messages, unreadCounts } = get();
+    // Deduplicate: ignore if a message with the same id already exists
+    if (message.id && messages.some((m) => m.id === message.id)) return;
+    const newMessages = [...messages, message];
+    // If message belongs to a different chat, increment unread count
+    const msgProcurement = message.procurement || message.procurement_id;
+    if (msgProcurement && msgProcurement !== currentChat) {
+      const newUnread = { ...unreadCounts, [msgProcurement]: (unreadCounts[msgProcurement] || 0) + 1 };
+      set({ messages: newMessages, unreadCounts: newUnread });
+    } else {
+      set({ messages: newMessages });
+    }
   },
 
   sendMessage: async (text) => {
     const { user, currentChat } = get();
     if (!user || !currentChat) return;
+
+    // Optimistic UI: add a temporary message immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      procurement: currentChat,
+      user: user.id,
+      sender_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+      text,
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+      _optimistic: true,
+    };
+    set({ messages: [...get().messages, optimisticMsg] });
 
     try {
       const message = await api.sendMessage({
@@ -281,9 +305,12 @@ export const useStore = create((set, get) => ({
         text,
         message_type: 'text',
       });
-      get().addMessage(message);
+      // Replace the optimistic message with the real one from the server
+      set({ messages: get().messages.map((m) => (m.id === tempId ? message : m)) });
       return message;
     } catch (error) {
+      // Remove the optimistic message on failure
+      set({ messages: get().messages.filter((m) => m.id !== tempId) });
       get().addToast('Ошибка отправки сообщения', 'error');
     }
   },
