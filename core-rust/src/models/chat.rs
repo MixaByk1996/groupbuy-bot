@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Message {
     pub id: i32,
     pub procurement_id: i32,
@@ -16,7 +17,7 @@ pub struct Message {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateMessage {
     pub procurement: i32,
     pub user: Option<i32>,
@@ -31,7 +32,7 @@ pub struct MessageQuery {
     pub user: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Notification {
     pub id: i32,
     pub user_id: i32,

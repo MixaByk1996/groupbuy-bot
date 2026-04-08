@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct User {
@@ -23,7 +24,7 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateUser {
     pub platform: Option<String>,
     pub platform_user_id: String,
@@ -37,7 +38,7 @@ pub struct CreateUser {
     pub selfie_file_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUser {
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -46,7 +47,7 @@ pub struct UpdateUser {
     pub role: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: i32,
     pub platform: String,
@@ -98,7 +99,7 @@ impl From<User> for UserResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserBalanceResponse {
     pub balance: Decimal,
     pub total_deposited: Decimal,
@@ -106,7 +107,7 @@ pub struct UserBalanceResponse {
     pub available: Decimal,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateBalanceRequest {
     pub amount: f64,
 }
@@ -139,7 +140,7 @@ pub struct UserSession {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SetSessionState {
     pub user_id: i32,
     pub dialog_type: Option<String>,
@@ -147,7 +148,7 @@ pub struct SetSessionState {
     pub dialog_data: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ClearSessionRequest {
     pub user_id: i32,
 }

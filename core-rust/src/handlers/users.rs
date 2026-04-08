@@ -5,6 +5,14 @@ use sqlx::PgPool;
 use crate::models::user::*;
 
 /// GET /api/users/
+#[utoipa::path(
+    get,
+    path = "/api/users/",
+    tag = "users",
+    responses(
+        (status = 200, description = "List of users", body = Vec<UserResponse>)
+    )
+)]
 pub async fn list_users(pool: web::Data<PgPool>) -> HttpResponse {
     match sqlx::query_as::<_, User>("SELECT * FROM users ORDER BY created_at DESC")
         .fetch_all(pool.get_ref())
@@ -22,6 +30,16 @@ pub async fn list_users(pool: web::Data<PgPool>) -> HttpResponse {
 }
 
 /// POST /api/users/
+#[utoipa::path(
+    post,
+    path = "/api/users/",
+    tag = "users",
+    request_body = CreateUser,
+    responses(
+        (status = 201, description = "User created", body = UserResponse),
+        (status = 400, description = "Bad request")
+    )
+)]
 pub async fn create_user(pool: web::Data<PgPool>, body: web::Json<CreateUser>) -> HttpResponse {
     let data = body.into_inner();
 
@@ -95,6 +113,16 @@ fn truncate_str(s: &str, max_chars: usize) -> String {
 }
 
 /// GET /api/users/{id}/
+#[utoipa::path(
+    get,
+    path = "/api/users/{id}/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let user_id = path.into_inner();
     match sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
@@ -112,6 +140,17 @@ pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResp
 }
 
 /// PATCH /api/users/{id}/
+#[utoipa::path(
+    patch,
+    path = "/api/users/{id}/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    request_body = UpdateUser,
+    responses(
+        (status = 200, description = "User updated", body = UserResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn update_user(
     pool: web::Data<PgPool>,
     path: web::Path<i32>,
@@ -198,6 +237,16 @@ pub async fn update_user(
 }
 
 /// DELETE /api/users/{id}/
+#[utoipa::path(
+    delete,
+    path = "/api/users/{id}/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    responses(
+        (status = 204, description = "User deleted"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn delete_user(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let user_id = path.into_inner();
     match sqlx::query("DELETE FROM users WHERE id = $1")
@@ -220,6 +269,19 @@ pub async fn delete_user(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpR
 }
 
 /// GET /api/users/by_platform/?platform=...&platform_user_id=...
+#[utoipa::path(
+    get,
+    path = "/api/users/by_platform/",
+    tag = "users",
+    params(
+        ("platform" = Option<String>, Query, description = "Platform name"),
+        ("platform_user_id" = String, Query, description = "Platform user ID")
+    ),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user_by_platform(
     pool: web::Data<PgPool>,
     query: web::Query<PlatformQuery>,
@@ -251,6 +313,16 @@ pub async fn get_user_by_platform(
 }
 
 /// GET /api/users/by_email/?email=...
+#[utoipa::path(
+    get,
+    path = "/api/users/by_email/",
+    tag = "users",
+    params(("email" = String, Query, description = "User email")),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user_by_email(
     pool: web::Data<PgPool>,
     query: web::Query<EmailQuery>,
@@ -280,6 +352,16 @@ pub async fn get_user_by_email(
 }
 
 /// GET /api/users/by_phone/?phone=...
+#[utoipa::path(
+    get,
+    path = "/api/users/by_phone/",
+    tag = "users",
+    params(("phone" = String, Query, description = "User phone number")),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user_by_phone(
     pool: web::Data<PgPool>,
     query: web::Query<PhoneQuery>,
@@ -316,6 +398,18 @@ pub async fn get_user_by_phone(
 }
 
 /// GET /api/users/check_exists/?platform=...&platform_user_id=...
+#[utoipa::path(
+    get,
+    path = "/api/users/check_exists/",
+    tag = "users",
+    params(
+        ("platform" = Option<String>, Query, description = "Platform name"),
+        ("platform_user_id" = String, Query, description = "Platform user ID")
+    ),
+    responses(
+        (status = 200, description = "Existence check result")
+    )
+)]
 pub async fn check_user_exists(
     pool: web::Data<PgPool>,
     query: web::Query<PlatformQuery>,
@@ -346,6 +440,16 @@ pub async fn check_user_exists(
 }
 
 /// GET /api/users/{id}/balance/
+#[utoipa::path(
+    get,
+    path = "/api/users/{id}/balance/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "User balance", body = UserBalanceResponse),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user_balance(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let user_id = path.into_inner();
     match sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
@@ -387,6 +491,17 @@ pub async fn get_user_balance(pool: web::Data<PgPool>, path: web::Path<i32>) -> 
 }
 
 /// POST /api/users/{id}/update_balance/
+#[utoipa::path(
+    post,
+    path = "/api/users/{id}/update_balance/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    request_body = UpdateBalanceRequest,
+    responses(
+        (status = 200, description = "Balance updated"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn update_user_balance(
     pool: web::Data<PgPool>,
     path: web::Path<i32>,
@@ -416,6 +531,16 @@ pub async fn update_user_balance(
 }
 
 /// GET /api/users/{id}/role/
+#[utoipa::path(
+    get,
+    path = "/api/users/{id}/role/",
+    tag = "users",
+    params(("id" = i32, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "User role"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user_role(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let user_id = path.into_inner();
     match sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
@@ -446,6 +571,15 @@ pub async fn get_user_role(pool: web::Data<PgPool>, path: web::Path<i32>) -> Htt
 // ---- Session handlers ----
 
 /// POST /api/users/sessions/set_state/
+#[utoipa::path(
+    post,
+    path = "/api/users/sessions/set_state/",
+    tag = "users",
+    request_body = SetSessionState,
+    responses(
+        (status = 200, description = "Session state set")
+    )
+)]
 pub async fn set_session_state(
     pool: web::Data<PgPool>,
     body: web::Json<SetSessionState>,
@@ -484,6 +618,15 @@ pub async fn set_session_state(
 }
 
 /// POST /api/users/sessions/clear_state/
+#[utoipa::path(
+    post,
+    path = "/api/users/sessions/clear_state/",
+    tag = "users",
+    request_body = ClearSessionRequest,
+    responses(
+        (status = 200, description = "Session cleared")
+    )
+)]
 pub async fn clear_session_state(
     pool: web::Data<PgPool>,
     body: web::Json<ClearSessionRequest>,

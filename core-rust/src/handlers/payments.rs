@@ -4,6 +4,16 @@ use sqlx::PgPool;
 use crate::models::payment::*;
 
 /// POST /api/payments/
+#[utoipa::path(
+    post,
+    path = "/api/payments/",
+    tag = "payments",
+    request_body = CreatePayment,
+    responses(
+        (status = 201, description = "Payment created", body = Payment),
+        (status = 400, description = "Bad request")
+    )
+)]
 pub async fn create_payment(
     pool: web::Data<PgPool>,
     body: web::Json<CreatePayment>,
@@ -33,6 +43,16 @@ pub async fn create_payment(
 }
 
 /// GET /api/payments/{id}/status/
+#[utoipa::path(
+    get,
+    path = "/api/payments/{id}/status/",
+    tag = "payments",
+    params(("id" = i32, Path, description = "Payment ID")),
+    responses(
+        (status = 200, description = "Payment status", body = PaymentStatusResponse),
+        (status = 404, description = "Payment not found")
+    )
+)]
 pub async fn get_payment_status(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let payment_id = path.into_inner();
     match sqlx::query_as::<_, Payment>("SELECT * FROM payments WHERE id = $1")

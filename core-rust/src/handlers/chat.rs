@@ -4,6 +4,18 @@ use sqlx::PgPool;
 use crate::models::chat::*;
 
 /// GET /api/chat/messages/?procurement=...
+#[utoipa::path(
+    get,
+    path = "/api/chat/messages/",
+    tag = "chat",
+    params(
+        ("procurement" = Option<i32>, Query, description = "Filter by procurement ID"),
+        ("user" = Option<i32>, Query, description = "Filter by user ID")
+    ),
+    responses(
+        (status = 200, description = "List of messages")
+    )
+)]
 pub async fn list_messages(
     pool: web::Data<PgPool>,
     query: web::Query<MessageQuery>,
@@ -33,6 +45,16 @@ pub async fn list_messages(
 }
 
 /// POST /api/chat/messages/
+#[utoipa::path(
+    post,
+    path = "/api/chat/messages/",
+    tag = "chat",
+    request_body = CreateMessage,
+    responses(
+        (status = 201, description = "Message created", body = Message),
+        (status = 400, description = "Bad request")
+    )
+)]
 pub async fn create_message(
     pool: web::Data<PgPool>,
     body: web::Json<CreateMessage>,
@@ -63,6 +85,15 @@ pub async fn create_message(
 }
 
 /// GET /api/chat/notifications/?user=...
+#[utoipa::path(
+    get,
+    path = "/api/chat/notifications/",
+    tag = "chat",
+    params(("user" = Option<i32>, Query, description = "Filter by user ID")),
+    responses(
+        (status = 200, description = "List of notifications", body = Vec<Notification>)
+    )
+)]
 pub async fn list_notifications(
     pool: web::Data<PgPool>,
     query: web::Query<NotificationQuery>,

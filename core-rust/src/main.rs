@@ -6,8 +6,75 @@ use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use std::sync::Arc;
 use tracing_actix_web::TracingLogger;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use handlers::websocket::WsState;
+
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "GroupBuy Bot API",
+        version = "1.0.0",
+        description = "API for GroupBuy Bot — a multi-platform group purchasing bot"
+    ),
+    paths(
+        handlers::users::list_users,
+        handlers::users::create_user,
+        handlers::users::get_user,
+        handlers::users::update_user,
+        handlers::users::delete_user,
+        handlers::users::get_user_by_platform,
+        handlers::users::get_user_by_email,
+        handlers::users::get_user_by_phone,
+        handlers::users::check_user_exists,
+        handlers::users::get_user_balance,
+        handlers::users::update_user_balance,
+        handlers::users::get_user_role,
+        handlers::users::set_session_state,
+        handlers::users::clear_session_state,
+        handlers::procurements::list_procurements,
+        handlers::procurements::create_procurement,
+        handlers::procurements::get_procurement,
+        handlers::procurements::join_procurement,
+        handlers::procurements::leave_procurement,
+        handlers::procurements::list_categories,
+        handlers::payments::create_payment,
+        handlers::payments::get_payment_status,
+        handlers::chat::list_messages,
+        handlers::chat::create_message,
+        handlers::chat::list_notifications,
+    ),
+    components(
+        schemas(
+            models::user::UserResponse,
+            models::user::CreateUser,
+            models::user::UpdateUser,
+            models::user::UserBalanceResponse,
+            models::user::UpdateBalanceRequest,
+            models::user::SetSessionState,
+            models::user::ClearSessionRequest,
+            models::procurement::Category,
+            models::procurement::ProcurementResponse,
+            models::procurement::CreateProcurement,
+            models::procurement::Participant,
+            models::procurement::JoinProcurement,
+            models::payment::Payment,
+            models::payment::CreatePayment,
+            models::payment::PaymentStatusResponse,
+            models::chat::Message,
+            models::chat::CreateMessage,
+            models::chat::Notification,
+        )
+    ),
+    tags(
+        (name = "users", description = "User management endpoints"),
+        (name = "procurements", description = "Procurement endpoints"),
+        (name = "payments", description = "Payment endpoints"),
+        (name = "chat", description = "Chat and notification endpoints"),
+    )
+)]
+struct ApiDoc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -53,6 +120,9 @@ async fn main() -> std::io::Result<()> {
 
     tracing::info!("Starting server on {}:{}", bind_addr, bind_port);
 
+    // Build OpenAPI spec once, outside the HttpServer closure
+    let openapi = ApiDoc::openapi();
+
     HttpServer::new(move || {
         let cors = Cors::default()
             .allow_any_origin()
@@ -77,6 +147,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(json_cfg)
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(ws_state.clone()))
+            // Swagger UI — available at /api/docs/
+            .service(
+                SwaggerUi::new("/api/docs/{_:.*}")
+                    .url("/api/schema/openapi.json", openapi.clone()),
+            )
             // User endpoints
             .route("/api/users/", web::get().to(handlers::users::list_users))
             .route("/api/users/", web::post().to(handlers::users::create_user))
