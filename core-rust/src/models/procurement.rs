@@ -3,6 +3,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
 /// Deserialize a datetime field that may arrive in any of these formats:
 ///   - RFC 3339 / ISO 8601 with timezone: "2026-04-25T16:52:00Z"
@@ -89,7 +90,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Category {
     pub id: i32,
     pub name: String,
@@ -100,7 +101,7 @@ pub struct Category {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Procurement {
     pub id: i32,
     pub title: String,
@@ -126,7 +127,7 @@ pub struct Procurement {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ProcurementResponse {
     pub id: i32,
     pub title: String,
@@ -220,7 +221,7 @@ impl Procurement {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateProcurement {
     pub title: String,
     pub description: String,
@@ -250,7 +251,7 @@ pub struct CreateProcurement {
     pub image_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ProcurementQuery {
     pub status: Option<String>,
     pub city: Option<String>,
@@ -258,7 +259,7 @@ pub struct ProcurementQuery {
     pub organizer_id: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Participant {
     pub id: i32,
     pub procurement_id: i32,
@@ -272,7 +273,7 @@ pub struct Participant {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinProcurement {
     pub user_id: Option<i32>,
     pub amount: Decimal,

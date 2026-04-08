@@ -4,6 +4,18 @@ use sqlx::PgPool;
 use crate::models::procurement::*;
 
 /// GET /api/procurements/
+#[utoipa::path(
+    get,
+    path = "/api/procurements/",
+    tag = "procurements",
+    params(
+        ("status" = Option<String>, Query, description = "Filter by status"),
+        ("city" = Option<String>, Query, description = "Filter by city")
+    ),
+    responses(
+        (status = 200, description = "List of procurements")
+    )
+)]
 pub async fn list_procurements(
     pool: web::Data<PgPool>,
     query: web::Query<ProcurementQuery>,
@@ -81,6 +93,16 @@ pub async fn list_procurements(
 }
 
 /// POST /api/procurements/
+#[utoipa::path(
+    post,
+    path = "/api/procurements/",
+    tag = "procurements",
+    request_body = CreateProcurement,
+    responses(
+        (status = 201, description = "Procurement created", body = ProcurementResponse),
+        (status = 400, description = "Bad request")
+    )
+)]
 pub async fn create_procurement(
     pool: web::Data<PgPool>,
     body: web::Json<CreateProcurement>,
@@ -129,6 +151,16 @@ pub async fn create_procurement(
 }
 
 /// GET /api/procurements/{id}/
+#[utoipa::path(
+    get,
+    path = "/api/procurements/{id}/",
+    tag = "procurements",
+    params(("id" = i32, Path, description = "Procurement ID")),
+    responses(
+        (status = 200, description = "Procurement found", body = ProcurementResponse),
+        (status = 404, description = "Procurement not found")
+    )
+)]
 pub async fn get_procurement(pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let proc_id = path.into_inner();
     match sqlx::query_as::<_, Procurement>("SELECT * FROM procurements WHERE id = $1")
@@ -155,6 +187,18 @@ pub async fn get_procurement(pool: web::Data<PgPool>, path: web::Path<i32>) -> H
 }
 
 /// POST /api/procurements/{id}/join/
+#[utoipa::path(
+    post,
+    path = "/api/procurements/{id}/join/",
+    tag = "procurements",
+    params(("id" = i32, Path, description = "Procurement ID")),
+    request_body = JoinProcurement,
+    responses(
+        (status = 201, description = "Joined procurement", body = Participant),
+        (status = 400, description = "Bad request"),
+        (status = 404, description = "Procurement not found")
+    )
+)]
 pub async fn join_procurement(
     pool: web::Data<PgPool>,
     path: web::Path<i32>,
@@ -233,6 +277,15 @@ pub async fn join_procurement(
 }
 
 /// POST /api/procurements/{id}/leave/
+#[utoipa::path(
+    post,
+    path = "/api/procurements/{id}/leave/",
+    tag = "procurements",
+    params(("id" = i32, Path, description = "Procurement ID")),
+    responses(
+        (status = 200, description = "Left procurement")
+    )
+)]
 pub async fn leave_procurement(_pool: web::Data<PgPool>, path: web::Path<i32>) -> HttpResponse {
     let proc_id = path.into_inner();
 
@@ -241,6 +294,14 @@ pub async fn leave_procurement(_pool: web::Data<PgPool>, path: web::Path<i32>) -
 }
 
 /// GET /api/procurements/categories/
+#[utoipa::path(
+    get,
+    path = "/api/procurements/categories/",
+    tag = "procurements",
+    responses(
+        (status = 200, description = "List of categories", body = Vec<Category>)
+    )
+)]
 pub async fn list_categories(pool: web::Data<PgPool>) -> HttpResponse {
     match sqlx::query_as::<_, Category>(
         "SELECT * FROM categories WHERE is_active = true ORDER BY name",

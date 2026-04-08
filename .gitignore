@@ -3,3 +3,4 @@ deploy.py
 .env
 *.pem
 *.key
+core-rust/target/

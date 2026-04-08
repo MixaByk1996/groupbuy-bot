@@ -2,8 +2,9 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Payment {
     pub id: i32,
     pub user_id: i32,
@@ -21,7 +22,7 @@ pub struct Payment {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreatePayment {
     pub user_id: i32,
     pub payment_type: String,
@@ -30,7 +31,7 @@ pub struct CreatePayment {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PaymentStatusResponse {
     pub id: i32,
     pub status: String,
@@ -39,7 +40,7 @@ pub struct PaymentStatusResponse {
     pub confirmation_url: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Transaction {
     pub id: i32,
     pub user_id: i32,
