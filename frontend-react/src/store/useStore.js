@@ -30,6 +30,9 @@ export const useStore = create((set, get) => ({
   // Sidebar state (mobile)
   sidebarOpen: false,
 
+  // Sidebar active tab
+  sidebarTab: 'chats',
+
   // Burger menu state
   burgerMenuOpen: false,
 
@@ -332,6 +335,7 @@ export const useStore = create((set, get) => ({
   // Actions - Sidebar
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   closeSidebar: () => set({ sidebarOpen: false }),
+  setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
   // Actions - Burger menu
   toggleBurgerMenu: () => set({ burgerMenuOpen: !get().burgerMenuOpen }),

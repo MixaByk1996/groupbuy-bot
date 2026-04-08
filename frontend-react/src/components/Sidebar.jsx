@@ -3,9 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { getInitials, getAvatarColor, formatTime } from '../utils/helpers';
 
-/**
- * Truncate text to the first N words, appending "…" if truncated.
- */
 function firstWords(text, n) {
   if (!text) return '';
   const words = text.trim().split(/\s+/);
@@ -28,25 +25,11 @@ function Sidebar() {
   const location = useLocation();
   const categoryParam = new URLSearchParams(location.search).get('category') || '';
   const [searchQuery, setSearchQuery] = useState(categoryParam);
-  const [activeTab, setActiveTab] = useState(
-    location.pathname.includes('/cabinet') ? 'cabinet' : 'chats'
-  );
 
-  // Sync search query when URL category param changes (e.g. from cabinet category buttons)
   useEffect(() => {
     const category = new URLSearchParams(location.search).get('category') || '';
     setSearchQuery(category);
   }, [location.search]);
-
-  // Sync tab with route (but don't override settings tab)
-  useEffect(() => {
-    if (activeTab === 'settings') return;
-    if (location.pathname.includes('/cabinet')) {
-      setActiveTab('cabinet');
-    } else {
-      setActiveTab('chats');
-    }
-  }, [location.pathname]);
 
   const {
     user,
@@ -54,14 +37,25 @@ function Sidebar() {
     currentChat,
     unreadCounts,
     sidebarOpen,
-    toggleSidebar,
     closeSidebar,
     theme,
     toggleTheme,
     toggleBurgerMenu,
     setCurrentChat,
     logout,
+    sidebarTab,
+    setSidebarTab,
   } = useStore();
+
+  // Sync tab with route (but don't override settings tab)
+  useEffect(() => {
+    if (sidebarTab === 'settings') return;
+    if (location.pathname.includes('/cabinet')) {
+      setSidebarTab('cabinet');
+    } else if (!location.pathname.includes('/chat')) {
+      setSidebarTab('chats');
+    }
+  }, [location.pathname]);
 
   const filteredProcurements = searchQuery
     ? procurements.filter(
@@ -78,7 +72,7 @@ function Sidebar() {
   };
 
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
+    setSidebarTab(tab);
     if (tab === 'chats') navigate('/');
     else if (tab === 'cabinet') { navigate('/cabinet'); closeSidebar(); }
   };
@@ -105,15 +99,6 @@ function Sidebar() {
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
         )}
-        {user && (
-          <button
-            className="btn btn-icon theme-toggle"
-            aria-label="Настройки"
-            onClick={() => handleTabChange('settings')}
-          >
-            <SettingsIcon />
-          </button>
-        )}
       </header>
 
       <div className="search-bar">
@@ -129,26 +114,26 @@ function Sidebar() {
 
       <div className="tabs">
         <button
-          className={`tab ${activeTab === 'chats' ? 'active' : ''}`}
+          className={`tab ${sidebarTab === 'chats' ? 'active' : ''}`}
           onClick={() => handleTabChange('chats')}
         >
           Чаты
         </button>
         <button
-          className={`tab ${activeTab === 'cabinet' ? 'active' : ''}`}
+          className={`tab ${sidebarTab === 'cabinet' ? 'active' : ''}`}
           onClick={() => handleTabChange('cabinet')}
         >
           Кабинет
         </button>
         <button
-          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          className={`tab ${sidebarTab === 'settings' ? 'active' : ''}`}
           onClick={() => handleTabChange('settings')}
         >
           Настройки
         </button>
       </div>
 
-      {activeTab === 'chats' && (
+      {sidebarTab === 'chats' && (
         <div className="chat-list">
           {filteredProcurements.length === 0 ? (
             <div className="p-lg text-center text-muted">
@@ -189,9 +174,9 @@ function Sidebar() {
         </div>
       )}
 
-      {activeTab === 'cabinet' && <div className="sidebar-spacer" />}
+      {sidebarTab === 'cabinet' && <div className="sidebar-spacer" />}
 
-      {activeTab === 'settings' && (
+      {sidebarTab === 'settings' && (
         <div className="sidebar-settings">
           {user && (
             <div className="sidebar-settings-profile">
@@ -231,10 +216,7 @@ function Sidebar() {
 
           {user && (
             <div className="sidebar-settings-section">
-              <button
-                className="sidebar-settings-logout"
-                onClick={logout}
-              >
+              <button className="sidebar-settings-logout" onClick={logout}>
                 <LogoutIcon />
                 <span>Выйти из аккаунта</span>
               </button>
@@ -243,8 +225,7 @@ function Sidebar() {
         </div>
       )}
 
-      {/* User footer: only show avatar + name */}
-      {user && activeTab !== 'settings' && (
+      {user && sidebarTab !== 'settings' && (
         <div
           className="sidebar-footer"
           style={{ cursor: 'pointer' }}
