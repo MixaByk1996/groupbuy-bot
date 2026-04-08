@@ -85,6 +85,52 @@ function LogoutSvg() {
   );
 }
 
+function WalletSvg() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+      <path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
+      <circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ArrowDownSvg() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 4v16m0 0l-6-6m6 6l6-6" />
+    </svg>
+  );
+}
+
+function ArrowUpSvg() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20V4m0 0l-6 6m6-6l6 6" />
+    </svg>
+  );
+}
+
+function SwitchSvg() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17 1l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="M7 23l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
+function EditSvg() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
 // ─── LC Slider categories ────────────────────────────────────────────────────
 
 const LC_SLIDER_CATEGORIES = [
@@ -99,14 +145,14 @@ const LC_SLIDER_CATEGORIES = [
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-/** LK action row — Telegram-style list button with icon, label, badge, chevron */
+/** LK action row — M3-style list button with tonal icon container, label, badge, chevron */
 function ActionRow({ icon, label, badge, onClick, danger }) {
   return (
     <button
       className={`lk-list-action-btn${danger ? ' lk-list-action-btn--danger' : ''}`}
       onClick={onClick}
     >
-      <span style={{ display: 'flex', flexShrink: 0 }}>{icon}</span>
+      <span className={`lk-list-icon-container${danger ? ' lk-list-icon-container--danger' : ''}`}>{icon}</span>
       <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
       {badge != null && badge > 0 && (
         <span className="lk-message-badge">{badge}</span>
@@ -1554,45 +1600,87 @@ function Cabinet() {
 
   return (
     <div className="lk-root">
-      {/* ═══ TOP BAR (non-scrollable) ═══ */}
-      <div className="lk-topbar">
-        {/* Row 1: Avatar | Download App | Switch Role */}
-        <div className="lk-topbar-row lk-topbar-row1">
-          <button
-            className="lk-btn-avatar"
-            onClick={() => {}}
-            title={`${user.first_name} ${user.last_name || ''}`}
-          >
-            <div className="lk-avatar-circle" style={{ background: avatarBg }}>
-              {initials}
-            </div>
-          </button>
-          <div className="lk-topbar-actions">
-            <button
-              className="lk-btn-action"
-              onClick={() => addToast('Скачать приложение', 'info')}
-            >
-              <DownloadAppSvg />
-              Скачать приложение
-            </button>
-            <button
-              className="lk-btn-action lk-btn-action--outline"
-              onClick={() => setRoleSwitchOpen(true)}
-            >
-              Сменить роль
-            </button>
+      {/* ═══ M3 PROFILE HEADER ═══ */}
+      <div className="lk-profile-header">
+        {/* Cover gradient */}
+        <div className="lk-profile-cover" style={{ background: `linear-gradient(135deg, ${avatarBg} 0%, ${avatarBg}cc 60%, #3390ec44 100%)` }} />
+
+        {/* Edit button overlay */}
+        <button
+          className="lk-profile-edit-btn"
+          onClick={() => addToast('Редактирование профиля', 'info')}
+          title="Редактировать профиль"
+        >
+          <EditSvg />
+        </button>
+
+        {/* Avatar + info row */}
+        <div className="lk-profile-info-row">
+          <div className="lk-profile-avatar" style={{ background: avatarBg }}>
+            {initials}
+          </div>
+          <div className="lk-profile-name-block">
+            <div className="lk-profile-name">{user.first_name} {user.last_name || ''}</div>
+            <div className="lk-profile-role-badge">{getRoleText(user.role)}</div>
           </div>
         </div>
 
-        {/* Row 2: Balance */}
-        <div className="lk-topbar-row lk-topbar-row2">
-          <button className="lk-btn-balance" onClick={openDepositModal}>
-            <BankSvg />
-            Баланс: {formatCurrency(user.balance || 0)}
-          </button>
+        {/* Info rows: phone/email/username */}
+        <div className="lk-profile-meta-rows">
+          {user.phone && (
+            <div className="lk-profile-meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" /></svg>
+              <span>{user.phone}</span>
+            </div>
+          )}
+          {user.email && (
+            <div className="lk-profile-meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+              <span>{user.email}</span>
+            </div>
+          )}
+          {user.username && (
+            <div className="lk-profile-meta-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+              <span>@{user.username}</span>
+            </div>
+          )}
         </div>
 
-        {/* Row 3: Horizontal slider carousel (7 cards) */}
+        {/* M3 Action buttons row */}
+        <div className="lk-profile-actions">
+          <button className="lk-m3-action-btn" onClick={openDepositModal}>
+            <span className="lk-m3-action-btn__icon"><ArrowDownSvg /></span>
+            <span className="lk-m3-action-btn__label">Пополнить</span>
+          </button>
+          <button className="lk-m3-action-btn" onClick={() => setWithdrawOpen(true)}>
+            <span className="lk-m3-action-btn__icon"><ArrowUpSvg /></span>
+            <span className="lk-m3-action-btn__label">Вывести</span>
+          </button>
+          <button className="lk-m3-action-btn" onClick={() => setRoleSwitchOpen(true)}>
+            <span className="lk-m3-action-btn__icon"><SwitchSvg /></span>
+            <span className="lk-m3-action-btn__label">Сменить роль</span>
+          </button>
+          <button className="lk-m3-action-btn" onClick={() => addToast('Скачать приложение', 'info')}>
+            <span className="lk-m3-action-btn__icon"><DownloadAppSvg /></span>
+            <span className="lk-m3-action-btn__label">Приложение</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ BALANCE CARD ═══ */}
+      <div className="lk-balance-card">
+        <div className="lk-balance-card__icon"><WalletSvg /></div>
+        <div className="lk-balance-card__info">
+          <div className="lk-balance-card__label">Баланс</div>
+          <div className="lk-balance-card__value">{formatCurrency(user.balance || 0)}</div>
+        </div>
+        <button className="lk-balance-card__btn" onClick={openDepositModal}>Пополнить</button>
+      </div>
+
+      {/* ═══ CATEGORY SLIDER ═══ */}
+      <div className="lk-topbar">
+        {/* Horizontal slider carousel (7 cards) */}
         <div className="lk-slider-wrapper">
           <div
             className="lk-slider-track"
@@ -1647,7 +1735,7 @@ function Cabinet() {
         )}
 
         {/* Search bar */}
-        <div className="lk-section-block">
+        <div className="lk-section-block lk-search-section">
           <div className="lk-search-bar" style={{ margin: 0 }}>
             <div className="lk-search-bar-icon"><SearchIcon /></div>
             <input
@@ -1666,13 +1754,11 @@ function Cabinet() {
         </div>
 
         {/* Messages section */}
-        <div className="lk-section-block">
-          <div className="lk-section-title">Сообщения</div>
-          <div className="lk-messages-list">
-            {messages.length === 0 ? (
-              <p className="lk-purchase-stats" style={{ padding: '8px 0' }}>Нет новых сообщений</p>
-            ) : (
-              messages.slice(0, 3).map((m) => (
+        {messages.length > 0 && (
+          <div className="lk-section-block">
+            <div className="lk-section-title">Сообщения</div>
+            <div className="lk-messages-list">
+              {messages.slice(0, 3).map((m) => (
                 <div
                   key={m.id}
                   className="lk-message-item"
@@ -1690,11 +1776,30 @@ function Cabinet() {
                   </div>
                   {!m.read && <span className="lk-message-badge">!</span>}
                 </div>
-              ))
-            )}
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* Settings & Logout section */}
+        <div className="lk-section-group" style={{ margin: '8px 16px' }}>
+          <SectionHeader title="Настройки" />
+          <ActionRow
+            icon={<SettingsIcon />}
+            label="Настройки оформления"
+            onClick={() => toggleSection('settings')}
+          />
+          {activeSection === 'settings' && renderSettings()}
+          <ActionRow
+            icon={<LogoutSvg />}
+            label="Выйти из аккаунта"
+            danger
+            onClick={logout}
+          />
         </div>
 
+        {/* Bottom spacing */}
+        <div style={{ height: 24 }} />
       </div>
 
       {/* ═══ MODALS ═══ */}
