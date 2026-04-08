@@ -19,6 +19,7 @@ import {
   MoonIcon,
   SearchIcon,
   LogoutIcon,
+  SettingsIcon,
 } from './Icons';
 import BurgerMenu from './BurgerMenu';
 
@@ -27,12 +28,26 @@ function Sidebar() {
   const location = useLocation();
   const categoryParam = new URLSearchParams(location.search).get('category') || '';
   const [searchQuery, setSearchQuery] = useState(categoryParam);
+  const [activeTab, setActiveTab] = useState(
+    location.pathname.includes('/cabinet') ? 'cabinet' : 'chats'
+  );
 
   // Sync search query when URL category param changes (e.g. from cabinet category buttons)
   useEffect(() => {
     const category = new URLSearchParams(location.search).get('category') || '';
     setSearchQuery(category);
   }, [location.search]);
+
+  // Sync tab with route (but don't override settings tab)
+  useEffect(() => {
+    if (activeTab === 'settings') return;
+    if (location.pathname.includes('/cabinet')) {
+      setActiveTab('cabinet');
+    } else {
+      setActiveTab('chats');
+    }
+  }, [location.pathname]);
+
   const {
     user,
     procurements,
@@ -62,7 +77,11 @@ function Sidebar() {
     closeSidebar();
   };
 
-  const activeTab = location.pathname.includes('/cabinet') ? 'cabinet' : 'chats';
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'chats') navigate('/');
+    else if (tab === 'cabinet') { navigate('/cabinet'); closeSidebar(); }
+  };
 
   return (
     <>
@@ -86,6 +105,15 @@ function Sidebar() {
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
         )}
+        {user && (
+          <button
+            className="btn btn-icon theme-toggle"
+            aria-label="Настройки"
+            onClick={() => handleTabChange('settings')}
+          >
+            <SettingsIcon />
+          </button>
+        )}
       </header>
 
       <div className="search-bar">
@@ -102,15 +130,21 @@ function Sidebar() {
       <div className="tabs">
         <button
           className={`tab ${activeTab === 'chats' ? 'active' : ''}`}
-          onClick={() => navigate('/')}
+          onClick={() => handleTabChange('chats')}
         >
           Чаты
         </button>
         <button
           className={`tab ${activeTab === 'cabinet' ? 'active' : ''}`}
-          onClick={() => { navigate('/cabinet'); closeSidebar(); }}
+          onClick={() => handleTabChange('cabinet')}
         >
           Кабинет
+        </button>
+        <button
+          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => handleTabChange('settings')}
+        >
+          Настройки
         </button>
       </div>
 
@@ -157,9 +191,66 @@ function Sidebar() {
 
       {activeTab === 'cabinet' && <div className="sidebar-spacer" />}
 
-      {/* User footer: theme toggle + logout */}
-      {user && (
-        <div className="sidebar-footer">
+      {activeTab === 'settings' && (
+        <div className="sidebar-settings">
+          {user && (
+            <div className="sidebar-settings-profile">
+              <div
+                className="sidebar-footer-avatar"
+                style={{ backgroundColor: getAvatarColor(user.first_name || '') }}
+              >
+                {getInitials(user.first_name, user.last_name)}
+              </div>
+              <div className="sidebar-footer-info">
+                <span className="sidebar-footer-name">{user.first_name} {user.last_name || ''}</span>
+                <span className="sidebar-settings-sub">{user.phone || user.email || ''}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="sidebar-settings-section">
+            <div className="sidebar-settings-item">
+              <span className="sidebar-settings-label">Тема</span>
+              <div className="lk-theme-switcher">
+                {[['light', 'Светлая'], ['dark', 'Тёмная']].map(([t, label]) => (
+                  <button
+                    key={t}
+                    className={`lk-theme-btn${theme === t ? ' active' : ''}`}
+                    onClick={() => {
+                      document.documentElement.setAttribute('data-theme', t);
+                      localStorage.setItem('theme', t);
+                      if (theme !== t) toggleTheme();
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {user && (
+            <div className="sidebar-settings-section">
+              <button
+                className="sidebar-settings-logout"
+                onClick={logout}
+              >
+                <LogoutIcon />
+                <span>Выйти из аккаунта</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* User footer: only show avatar + name */}
+      {user && activeTab !== 'settings' && (
+        <div
+          className="sidebar-footer"
+          style={{ cursor: 'pointer' }}
+          onClick={() => handleTabChange('settings')}
+          title="Настройки"
+        >
           <div
             className="sidebar-footer-avatar"
             style={{ backgroundColor: getAvatarColor(user.first_name || '') }}
@@ -169,20 +260,6 @@ function Sidebar() {
           <div className="sidebar-footer-info">
             <span className="sidebar-footer-name">{user.first_name} {user.last_name || ''}</span>
           </div>
-          <button
-            className="btn btn-icon theme-toggle"
-            aria-label="Toggle theme"
-            onClick={toggleTheme}
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
-          <button
-            className="btn btn-icon sidebar-logout-btn"
-            aria-label="Выйти"
-            onClick={logout}
-          >
-            <LogoutIcon />
-          </button>
         </div>
       )}
     </aside>
