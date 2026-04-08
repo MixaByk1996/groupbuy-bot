@@ -76,6 +76,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (!user.isActive) throw new UnauthorizedException('Account is disabled');
+    if (user.isBanned) throw new ForbiddenException({ status: 403, code: 'USER_BANNED', message: 'Your account has been suspended' });
 
     const valid = await this.usersService.validatePassword(user, password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');

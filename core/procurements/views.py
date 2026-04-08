@@ -2,13 +2,16 @@
 Views for Procurements API
 """
 import logging
+import uuid as uuid_lib
 
+from django.db import transaction as db_transaction
+from django.utils import timezone
 from django.db.models import Count
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Category, Procurement, Participant, SupplierVote, VoteCloseRequest
+from .models import Category, Procurement, Participant, SupplierVote, VoteCloseRequest, SupplierDocumentJob
 from .serializers import (
     CategorySerializer, ProcurementListSerializer, ProcurementDetailSerializer,
     ProcurementCreateSerializer, ParticipantSerializer, JoinProcurementSerializer,
@@ -552,6 +555,158 @@ class ProcurementViewSet(viewsets.ModelViewSet):
             'commission_amount': round(commission, 2),
             'rows': rows,
         })
+
+    @action(detail=True, methods=['post'])
+    def send_to_supplier(self, request, pk=None):
+        """Enqueue a document export job to send procurement data to the supplier.
+
+        Idempotency: provide `idempotency_key` in the request body to avoid duplicate sends.
+        If omitted, a unique key is generated automatically.
+
+        Status flow: pending → processing → sent | failed_retry | fatal_error
+        Full request/response payloads are logged to supplier_document_jobs for audit.
+
+        The actual HTTP call to the supplier API happens here synchronously (for simplicity).
+        In a high-load production system, move the HTTP call to a Celery/BullMQ worker that
+        reads from pending/failed_retry jobs.
+        """
+        import requests as http_requests  # lazy import to avoid top-level side-effects
+
+        procurement = self.get_object()
+
+        organizer_id = request.data.get('organizer_id')
+        supplier_api_url = request.data.get('supplier_api_url', '')
+        idempotency_key = request.data.get('idempotency_key') or str(uuid_lib.uuid4())
+        job_type = request.data.get('job_type', 'receipt_table')
+
+        if not organizer_id or procurement.organizer_id != int(organizer_id):
+            return Response(
+                {'status': 403, 'code': 'SEND_FORBIDDEN', 'message': 'Only the organizer can send documents'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Build the document payload (snapshot at time of job creation)
+        participants = procurement.participants.filter(
+            is_active=True,
+            status__in=[Participant.Status.CONFIRMED, Participant.Status.PAID],
+        ).select_related('user')
+
+        rows = []
+        total_amount = 0
+        for p in participants:
+            rows.append({
+                'user_id': p.user_id,
+                'full_name': p.user.full_name,
+                'phone': p.user.phone,
+                'city': procurement.city,
+                'quantity': str(p.quantity),
+                'amount': str(p.amount),
+                'status': p.status,
+                'notes': p.notes,
+            })
+            total_amount += float(p.amount)
+
+        commission = float(procurement.commission_percent) / 100 * total_amount
+        doc_payload = {
+            'procurement_id': procurement.id,
+            'procurement_title': procurement.title,
+            'supplier_id': procurement.supplier_id,
+            'unit': procurement.unit,
+            'total_participants': len(rows),
+            'total_amount': round(total_amount, 2),
+            'commission_percent': str(procurement.commission_percent),
+            'commission_amount': round(commission, 2),
+            'rows': rows,
+        }
+
+        # Create or retrieve existing job (idempotency)
+        with db_transaction.atomic():
+            job, created = SupplierDocumentJob.objects.get_or_create(
+                procurement=procurement,
+                job_type=job_type,
+                idempotency_key=idempotency_key,
+                defaults={
+                    'organizer_id': organizer_id,
+                    'status': SupplierDocumentJob.Status.PENDING,
+                    'supplier_api_url': supplier_api_url,
+                    'request_payload': doc_payload,
+                    'retry_count': 0,
+                },
+            )
+
+        if not created and job.status == SupplierDocumentJob.Status.SENT:
+            # Already delivered — return cached result (idempotent)
+            return Response({'success': True, 'idempotent': True, 'job_id': job.id,
+                             'status': job.status}, status=status.HTTP_200_OK)
+
+        if job.retry_count >= job.max_retries:
+            job.status = SupplierDocumentJob.Status.FATAL_ERROR
+            job.save(update_fields=['status', 'updated_at'])
+            return Response(
+                {'status': 429, 'code': 'MAX_RETRIES_EXCEEDED',
+                 'message': f'Job {job.id} has exceeded max retries'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        # Mark as processing
+        job.status = SupplierDocumentJob.Status.PROCESSING
+        job.last_attempt_at = timezone.now()
+        job.save(update_fields=['status', 'last_attempt_at', 'updated_at'])
+
+        # Attempt delivery to supplier API
+        try:
+            if supplier_api_url:
+                resp = http_requests.post(
+                    supplier_api_url,
+                    json=doc_payload,
+                    timeout=30,
+                )
+                resp_payload = {}
+                try:
+                    resp_payload = resp.json()
+                except Exception:
+                    resp_payload = {'raw': resp.text[:2000]}
+
+                if resp.ok:
+                    job.status = SupplierDocumentJob.Status.SENT
+                    job.sent_at = timezone.now()
+                    job.response_payload = resp_payload
+                else:
+                    job.retry_count += 1
+                    if job.retry_count >= job.max_retries:
+                        job.status = SupplierDocumentJob.Status.FATAL_ERROR
+                    else:
+                        job.status = SupplierDocumentJob.Status.FAILED_RETRY
+                    job.response_payload = resp_payload
+                    job.error_message = f'HTTP {resp.status_code}: {resp.text[:500]}'
+            else:
+                # No supplier API URL configured — mark as sent (local delivery / webhook)
+                job.status = SupplierDocumentJob.Status.SENT
+                job.sent_at = timezone.now()
+                job.response_payload = {'note': 'No supplier_api_url provided; payload stored locally'}
+
+        except Exception as exc:
+            job.retry_count += 1
+            if job.retry_count >= job.max_retries:
+                job.status = SupplierDocumentJob.Status.FATAL_ERROR
+            else:
+                job.status = SupplierDocumentJob.Status.FAILED_RETRY
+            job.error_message = str(exc)[:1000]
+            logger.error(
+                'send_to_supplier job %s failed (attempt %s/%s): %s',
+                job.id, job.retry_count, job.max_retries, exc,
+            )
+
+        job.save(update_fields=['status', 'retry_count', 'response_payload',
+                                'error_message', 'sent_at', 'updated_at'])
+
+        response_status = status.HTTP_200_OK if job.status == SupplierDocumentJob.Status.SENT else status.HTTP_202_ACCEPTED
+        return Response({
+            'success': job.status == SupplierDocumentJob.Status.SENT,
+            'job_id': job.id,
+            'status': job.status,
+            'retry_count': job.retry_count,
+        }, status=response_status)
 
     @action(detail=True, methods=['post'])
     def close(self, request, pk=None):

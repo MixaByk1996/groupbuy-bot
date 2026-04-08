@@ -243,3 +243,54 @@ class VoteCloseRequest(models.Model):
 
     def __str__(self):
         return f"{self.user} requested close vote in {self.procurement.title}"
+
+
+class SupplierDocumentJob(models.Model):
+    """Tracks document export jobs sent to suppliers.
+
+    Status machine: pending → processing → sent | failed_retry | fatal_error
+    Idempotency: unique (procurement, job_type, idempotency_key) prevents duplicate sends.
+    Full request/response payloads are stored in JSONB for audit and debugging.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        SENT = 'sent', 'Sent'
+        FAILED_RETRY = 'failed_retry', 'Failed – will retry'
+        FATAL_ERROR = 'fatal_error', 'Fatal error – no retry'
+
+    procurement = models.ForeignKey(
+        Procurement, on_delete=models.CASCADE, related_name='supplier_document_jobs'
+    )
+    organizer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='initiated_supplier_jobs'
+    )
+    job_type = models.CharField(max_length=50, default='receipt_table')
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    idempotency_key = models.CharField(max_length=255)
+    retry_count = models.PositiveSmallIntegerField(default=0)
+    max_retries = models.PositiveSmallIntegerField(default=3)
+    supplier_api_url = models.TextField(blank=True, default='')
+    # Full request dump (for audit / retry)
+    request_payload = models.JSONField(default=dict)
+    # Full response from supplier API (for audit / debugging)
+    response_payload = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(blank=True, default='')
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'supplier_document_jobs'
+        unique_together = ['procurement', 'job_type', 'idempotency_key']
+        indexes = [
+            models.Index(fields=['status'], name='sdj_status_idx'),
+            models.Index(fields=['procurement'], name='sdj_procurement_idx'),
+        ]
+
+    def __str__(self):
+        return f"SupplierDocumentJob {self.id} [{self.status}] for {self.procurement.title}"
