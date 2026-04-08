@@ -503,6 +503,17 @@ function Cabinet() {
     track.scrollTo({ left: idx * cardWidth, behavior: 'smooth' });
   }, []);
 
+  // Set initial active section based on user role to show active purchases immediately
+  useEffect(() => {
+    if (!user) return;
+    setActiveSection((prev) => {
+      if (prev !== null) return prev;
+      if (user.role === 'organizer') return 'myProcurements';
+      if (user.role === 'buyer') return 'currentPurchases';
+      return prev;
+    });
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     const loadStats = async () => {
