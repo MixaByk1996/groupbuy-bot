@@ -1032,7 +1032,7 @@ function Cabinet() {
                     { value: 'cancelled', label: 'Отменена' },
                   ].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-                {p.status === 'active' && (
+                {p.organizer === user?.id && p.status === 'active' && (
                   <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '2px 8px' }} onClick={() => handleOpenAddParticipant(p)}>
                     + Добавить участника
                   </button>

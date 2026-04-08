@@ -591,7 +591,7 @@ class ProcurementViewSet(viewsets.ModelViewSet):
         organizer_id = serializer.validated_data.get('organizer_id')
         email = serializer.validated_data['email']
 
-        if organizer_id is not None and procurement.organizer_id != int(organizer_id):
+        if organizer_id is None or procurement.organizer_id != int(organizer_id):
             return Response(
                 {'error': 'Only the creator of this procurement can send invitations'},
                 status=status.HTTP_403_FORBIDDEN

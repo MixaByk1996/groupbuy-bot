@@ -168,6 +168,36 @@ class TestInviteEndpoint:
         source = read(CORE_PROC_VIEWS)
         assert "logger.info" in source and "invited_email" in source
 
+    def test_invite_rejects_missing_organizer_id(self):
+        """invite must deny requests when organizer_id is absent (issue #268)."""
+        source = read(CORE_PROC_VIEWS)
+        # The guard must trigger when organizer_id is None, not skip the check
+        assert "organizer_id is None" in source, (
+            "The invite view must reject requests where organizer_id is missing, "
+            "not skip the organizer check when organizer_id is None."
+        )
+
+    def test_frontend_add_participant_button_requires_organizer(self):
+        """Cabinet.jsx Add Participant button must only show for the organizer (issue #268)."""
+        source = read(FRONTEND_CABINET)
+        # The buggy pattern was a bare status check before the add-participant button.
+        # After the fix, the button must also require p.organizer === user?.id.
+        # Verify the fixed pattern is present and the bare buggy pattern is absent.
+        fixed_pattern = "p.organizer === user?.id && p.status === 'active' && (\n                  <button"
+        assert fixed_pattern in source, (
+            "Cabinet.jsx must guard the '+ Добавить участника' button with "
+            "p.organizer === user?.id (issue #268)."
+        )
+        # Verify that every handleOpenAddParticipant button click is preceded
+        # by an organizer check. Split on the first occurrence of the call.
+        idx = source.index('handleOpenAddParticipant(p)')
+        # Walk backwards to find the nearest JSX conditional open brace
+        preceding = source[max(0, idx - 200):idx]
+        assert 'p.organizer' in preceding, (
+            "The '+ Добавить участника' button must be wrapped in a p.organizer === user?.id "
+            "check. Issue #268: previously any user could trigger the add-participant action."
+        )
+
     def test_invite_serializer_exists(self):
         """InviteUserSerializer must be defined in serializers.py."""
         source = read(CORE_PROC_SERIALIZERS)
@@ -328,6 +358,48 @@ class TestNotificationMarkReadDjango:
             f"Expected 200 OK but got {response.status_code}: {response.data}"
         )
         assert response.data['invited_email'] == 'invited@example.com'
+
+    def test_invite_view_returns_403_when_organizer_id_missing(self, db):
+        """POST /api/procurements/<id>/invite/ without organizer_id must return 403.
+
+        Regression test for issue #268: the invite endpoint previously allowed
+        requests with no organizer_id to bypass the organizer check entirely.
+        """
+        from rest_framework.test import APIClient
+        from users.models import User
+        from procurements.models import Category, Procurement
+        from decimal import Decimal
+        from django.utils import timezone
+        import datetime
+
+        client = APIClient()
+
+        organizer = User.objects.create(
+            platform_user_id='400001', username='organizer3', first_name='Org',
+            last_name='Three', role='organizer'
+        )
+        category = Category.objects.create(name='Test Category 3')
+        procurement = Procurement.objects.create(
+            title='Test Procurement 3',
+            description='Test',
+            category=category,
+            organizer=organizer,
+            city='Moscow',
+            target_amount=Decimal('10000.00'),
+            deadline=timezone.now() + datetime.timedelta(days=30),
+            status='active',
+        )
+
+        # Send invite without organizer_id — must be rejected
+        response = client.post(
+            f'/api/procurements/{procurement.id}/invite/',
+            data={'email': 'anyone@example.com'},
+            format='json',
+        )
+        assert response.status_code == 403, (
+            f"Expected 403 Forbidden but got {response.status_code}. "
+            "Omitting organizer_id must not bypass the organizer permission check."
+        )
 
     def test_notification_mark_read_action(self, db):
         """POST /api/chat/notifications/<id>/mark_read/ returns 200 and marks read."""
