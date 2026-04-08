@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import Sidebar from './Sidebar';
-import ProcurementSlider from './ProcurementSlider';
 import { BurgerMenuIcon } from './Icons';
 
 function Layout({ children }) {
@@ -41,7 +40,6 @@ function Layout({ children }) {
             <h1 className="header-title">GroupBuy</h1>
           </header>
         )}
-        <ProcurementSlider />
         {children}
       </main>
     </div>

@@ -11,6 +11,7 @@ import {
   PlusIcon,
   RequestsIcon,
   MailIcon,
+  SearchIcon,
 } from './Icons';
 
 function BurgerMenu() {
@@ -136,6 +137,17 @@ function BurgerMenu() {
             </ul>
           </>
         )}
+
+        <div className="burger-divider" />
+
+        <ul className="burger-menu-list" role="list">
+          <li>
+            <button className="burger-menu-item" onClick={() => go('/')}>
+              <SearchIcon />
+              <span>Активные закупки</span>
+            </button>
+          </li>
+        </ul>
 
         <div className="burger-divider" />
 
