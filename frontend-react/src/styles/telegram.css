@@ -672,7 +672,7 @@ input, textarea, select {
   height: var(--tg-input-height);
   padding: 0 var(--tg-spacing-md);
   background-color: var(--tg-bg-primary);
-  border: 1px solid var(--tg-border);
+  border: 1.5px solid var(--tg-border);
   border-radius: var(--tg-radius-md);
   font-size: var(--tg-font-size-base);
   color: var(--tg-text-primary);
@@ -681,7 +681,8 @@ input, textarea, select {
 
 .form-input:focus {
   border-color: var(--tg-primary);
-  box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.2);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(51, 144, 236, 0.15);
   outline: none;
 }
 
@@ -694,6 +695,73 @@ input, textarea, select {
   color: var(--tg-text-muted);
   font-size: var(--tg-font-size-base);
 }
+
+/* M3 outlined text field */
+.m3-field {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.m3-field__input {
+  width: 100%;
+  height: 48px;
+  padding: 14px 16px 2px;
+  background: var(--tg-bg-primary);
+  border: 1.5px solid var(--tg-border);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--tg-text-primary);
+  transition: border-color 0.15s, border-width 0.1s;
+  outline: none;
+}
+
+.m3-field__input:focus {
+  border-color: var(--tg-primary);
+  border-width: 2px;
+}
+
+.m3-field__label {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-size: 15px;
+  color: var(--tg-text-muted);
+  pointer-events: none;
+  transition: top 0.15s, font-size 0.15s, color 0.15s;
+  background: transparent;
+}
+
+.m3-field__input:focus ~ .m3-field__label,
+.m3-field__input:not(:placeholder-shown) ~ .m3-field__label {
+  top: 4px;
+  font-size: 11px;
+  color: var(--tg-primary);
+}
+
+.m3-field__input:focus {
+  padding-top: 18px;
+  padding-bottom: 4px;
+}
+
+/* M3 select */
+.m3-select {
+  width: 100%;
+  height: 48px;
+  padding: 0 36px 0 14px;
+  background: var(--tg-bg-primary);
+  border: 1.5px solid var(--tg-border);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--tg-text-primary);
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235e6670' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.m3-select:focus { border-color: var(--tg-primary); border-width: 2px; }
 
 .form-textarea {
   min-height: 100px;
@@ -939,7 +1007,7 @@ input, textarea, select {
 
 .modal {
   background-color: var(--tg-bg-primary);
-  border-radius: var(--tg-radius-md);
+  border-radius: 28px;
   max-width: 420px;
   width: 90%;
   max-height: 90vh;
@@ -1824,12 +1892,14 @@ input, textarea, select {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: var(--tg-bg-secondary);
+  padding-top: 8px;
 }
 
 .lk-section-block {
   background: var(--tg-bg-primary);
   margin-bottom: 8px;
   padding: 12px 16px;
+  border-bottom: 0.5px solid var(--tg-border-light);
 }
 
 .lk-section-title {
@@ -1900,43 +1970,61 @@ input, textarea, select {
 }
 
 .lk-btn-invite-accept {
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
   background: var(--tg-primary);
   color: #fff;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
   min-height: 36px;
   border: none;
   cursor: pointer;
 }
 .lk-btn-invite-accept:hover { background: var(--tg-primary-dark); }
+.lk-btn-invite-accept:active { transform: scale(0.97); }
 
 /* Action buttons (list-style) */
 .lk-list-action-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  height: 56px;
-  padding: 0 8px;
+  height: 58px;
+  padding: 0 16px 0 12px;
   background: transparent;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 0;
+  font-size: 15px;
   color: var(--tg-text-primary);
   text-align: left;
   transition: background 0.12s;
   min-height: 44px;
   border: none;
+  border-bottom: 0.5px solid var(--tg-border-light);
   cursor: pointer;
 }
+.lk-list-action-btn:last-child { border-bottom: none; }
 .lk-list-action-btn:hover { background: var(--tg-bg-secondary); }
 .lk-list-action-btn--primary { color: var(--tg-primary); font-weight: 500; }
 .lk-list-action-btn--danger { color: var(--tg-error); }
-.lk-list-action-btn svg:first-child { color: var(--tg-primary); }
-.lk-list-action-btn--danger svg:first-child { color: var(--tg-error); }
+
+/* M3 tonal icon container */
+.lk-list-icon-container {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--tg-primary-light);
+  color: var(--tg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lk-list-icon-container--danger {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--tg-error);
+}
 
 .lk-chevron {
   margin-left: auto;
@@ -1975,19 +2063,20 @@ input, textarea, select {
 /* Section group */
 .lk-section-group {
   background: var(--tg-bg-primary);
-  border-radius: 10px;
+  border-radius: 14px;
   margin: 0 16px 8px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border: 0.5px solid var(--tg-border-light);
 }
 
 .lk-group-header {
-  padding: 16px 16px 6px;
-  font-size: 13px;
+  padding: 14px 16px 4px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--tg-text-secondary);
+  color: var(--tg-primary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 /* Settings */
@@ -2014,7 +2103,7 @@ input, textarea, select {
 .lk-theme-btn { padding: 4px 10px; border-radius: 6px; font-size: 13px; color: var(--tg-text-secondary); transition: background 0.15s, color 0.15s; background: none; border: none; cursor: pointer; }
 .lk-theme-btn.active { background: var(--tg-primary); color: #fff; }
 
-/* Purchase items */
+/* Purchase items — M3 list tiles */
 .lk-purchase-item {
   display: flex;
   align-items: center;
@@ -2037,22 +2126,249 @@ input, textarea, select {
 .lk-purchase-progress-fill { height: 100%; background: var(--tg-primary); border-radius: 2px; transition: width 0.4s ease; }
 .lk-purchase-stats { font-size: 12px; color: var(--tg-text-muted); }
 
-/* Settings danger btn */
+/* Settings danger btn — M3 filled tonal error */
 .lk-settings-danger-btn {
   width: 100%;
-  height: 56px;
-  background: var(--tg-error);
-  color: #fff;
-  border-radius: 8px;
+  height: 52px;
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--tg-error);
+  border-radius: 14px;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
   min-height: 44px;
   border: none;
   cursor: pointer;
 }
-.lk-settings-danger-btn:hover { opacity: 0.9; }
+.lk-settings-danger-btn:hover { background: rgba(255, 59, 48, 0.2); }
+.lk-settings-danger-btn:active { transform: scale(0.98); }
+
+/* ============================================
+   M3 PROFILE HEADER — Telegram Android style
+   ============================================ */
+
+.lk-profile-header {
+  position: relative;
+  background: var(--tg-bg-primary);
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--tg-border-light);
+}
+
+/* Gradient cover strip */
+.lk-profile-cover {
+  height: 108px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Edit button floating over cover */
+.lk-profile-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(4px);
+  color: var(--tg-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.lk-profile-edit-btn:hover { background: rgba(255,255,255,0.95); transform: scale(1.05); }
+
+[data-theme="dark"] .lk-profile-edit-btn {
+  background: rgba(44,44,46,0.85);
+  color: var(--tg-text-primary);
+}
+
+/* Avatar + name row */
+.lk-profile-info-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 0 16px;
+  margin-top: -36px;
+}
+
+.lk-profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--tg-bg-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.lk-profile-name-block {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 4px;
+}
+
+.lk-profile-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--tg-text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lk-profile-role-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: var(--tg-primary-light);
+  color: var(--tg-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Phone/email/username info rows */
+.lk-profile-meta-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px 0;
+}
+
+.lk-profile-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--tg-text-secondary);
+  font-size: 14px;
+}
+.lk-profile-meta-item svg { flex-shrink: 0; opacity: 0.7; }
+
+/* M3 Action buttons (pill-shaped, tonal) */
+.lk-profile-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px 16px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lk-profile-actions::-webkit-scrollbar { display: none; }
+
+.lk-m3-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 68px;
+  padding: 10px 8px;
+  background: var(--tg-primary-light);
+  color: var(--tg-primary);
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.lk-m3-action-btn:hover { background: rgba(51,144,236,0.25); }
+.lk-m3-action-btn:active { transform: scale(0.96); }
+
+.lk-m3-action-btn__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--tg-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lk-m3-action-btn__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tg-primary);
+  text-align: center;
+}
+
+/* Balance card */
+.lk-balance-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 10px 16px 0;
+  padding: 14px 16px;
+  background: var(--tg-bg-primary);
+  border-radius: 14px;
+  border: 1.5px solid var(--tg-border-light);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.lk-balance-card__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--tg-primary-light);
+  color: var(--tg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lk-balance-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lk-balance-card__label {
+  font-size: 12px;
+  color: var(--tg-text-secondary);
+}
+
+.lk-balance-card__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--tg-text-primary);
+  line-height: 1.2;
+}
+
+.lk-balance-card__btn {
+  padding: 8px 16px;
+  background: var(--tg-primary);
+  color: #fff;
+  border-radius: 20px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.lk-balance-card__btn:hover { background: var(--tg-primary-dark); }
+
+/* Search section style */
+.lk-search-section {
+  padding: 10px 16px !important;
+  background: var(--tg-bg-secondary) !important;
+  border-bottom: none !important;
+}
 
 /* ============================================
    LK Responsive
@@ -2077,6 +2393,15 @@ input, textarea, select {
   .lk-list-action-btn { font-size: 15px; }
   /* Hide desktop-only cabinet sections; these are accessible via the burger menu */
   .lk-mobile-hidden { display: none; }
+  .lk-profile-cover { height: 80px; }
+  .lk-profile-avatar { width: 66px; height: 66px; font-size: 22px; }
+  .lk-profile-name { font-size: 17px; }
+  .lk-profile-actions { gap: 6px; padding: 12px 12px 0; }
+  .lk-m3-action-btn { min-width: 58px; padding: 8px 6px; }
+  .lk-m3-action-btn__icon { width: 30px; height: 30px; }
+  .lk-m3-action-btn__label { font-size: 10px; }
+  .lk-balance-card { margin: 8px 12px 0; }
+  .lk-section-group { margin: 0 12px 8px; }
 }
 
 /* Burger menu items shown only on mobile (role-specific shortcuts) */
