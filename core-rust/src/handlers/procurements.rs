@@ -293,6 +293,88 @@ pub async fn leave_procurement(_pool: web::Data<PgPool>, path: web::Path<i32>) -
     HttpResponse::Ok().json(serde_json::json!({"message": "Left procurement", "procurement_id": proc_id}))
 }
 
+/// GET /api/procurements/user/{user_id}/
+#[utoipa::path(
+    get,
+    path = "/api/procurements/user/{user_id}/",
+    tag = "procurements",
+    params(("user_id" = i32, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "User's organized and participating procurements")
+    )
+)]
+pub async fn get_user_procurements(
+    pool: web::Data<PgPool>,
+    path: web::Path<i32>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+
+    // Fetch procurements organized by this user
+    let organized = match sqlx::query_as::<_, Procurement>(
+        "SELECT * FROM procurements WHERE organizer_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool.get_ref())
+    .await
+    {
+        Ok(procs) => procs,
+        Err(e) => {
+            tracing::error!("Failed to fetch organized procurements: {}", e);
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({"error": "Database error"}));
+        }
+    };
+
+    // Fetch procurements the user is participating in
+    let participating = match sqlx::query_as::<_, Procurement>(
+        r#"SELECT p.* FROM procurements p
+           INNER JOIN participants pt ON p.id = pt.procurement_id
+           WHERE pt.user_id = $1 AND pt.is_active = true
+           ORDER BY p.created_at DESC"#,
+    )
+    .bind(user_id)
+    .fetch_all(pool.get_ref())
+    .await
+    {
+        Ok(procs) => procs,
+        Err(e) => {
+            tracing::error!("Failed to fetch participating procurements: {}", e);
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({"error": "Database error"}));
+        }
+    };
+
+    // Build responses with participant counts
+    let mut organized_responses = Vec::new();
+    for p in organized {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM participants WHERE procurement_id = $1 AND is_active = true",
+        )
+        .bind(p.id)
+        .fetch_one(pool.get_ref())
+        .await
+        .unwrap_or(0);
+        organized_responses.push(p.to_response(count));
+    }
+
+    let mut participating_responses = Vec::new();
+    for p in participating {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM participants WHERE procurement_id = $1 AND is_active = true",
+        )
+        .bind(p.id)
+        .fetch_one(pool.get_ref())
+        .await
+        .unwrap_or(0);
+        participating_responses.push(p.to_response(count));
+    }
+
+    HttpResponse::Ok().json(serde_json::json!({
+        "organized": organized_responses,
+        "participating": participating_responses
+    }))
+}
+
 /// GET /api/procurements/categories/
 #[utoipa::path(
     get,

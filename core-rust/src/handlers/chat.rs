@@ -84,6 +84,78 @@ pub async fn create_message(
     }
 }
 
+/// POST /api/chat/messages/mark_read/
+pub async fn mark_messages_read(
+    pool: web::Data<PgPool>,
+    body: web::Json<serde_json::Value>,
+) -> HttpResponse {
+    let user_id = match body.get("user_id").and_then(|v| v.as_i64()) {
+        Some(id) => id as i32,
+        None => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"error": "user_id and procurement_id are required"}))
+        }
+    };
+    let procurement_id = match body.get("procurement_id").and_then(|v| v.as_i64()) {
+        Some(id) => id as i32,
+        None => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"error": "user_id and procurement_id are required"}))
+        }
+    };
+    let message_id = body.get("message_id").and_then(|v| v.as_i64()).map(|id| id as i32);
+
+    // Determine the message_id to record (use provided or fetch last message)
+    let effective_message_id = if let Some(mid) = message_id {
+        Some(mid)
+    } else {
+        sqlx::query_scalar::<_, i32>(
+            "SELECT id FROM chat_messages WHERE procurement_id = $1 AND is_deleted = false ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(procurement_id)
+        .fetch_optional(pool.get_ref())
+        .await
+        .unwrap_or(None)
+    };
+
+    if let Some(mid) = effective_message_id {
+        let _ = sqlx::query(
+            r#"INSERT INTO message_reads (user_id, procurement_id, last_read_message_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (user_id, procurement_id) DO UPDATE SET last_read_message_id = EXCLUDED.last_read_message_id"#,
+        )
+        .bind(user_id)
+        .bind(procurement_id)
+        .bind(mid)
+        .execute(pool.get_ref())
+        .await;
+    }
+
+    HttpResponse::Ok().json(serde_json::json!({"message": "Marked as read"}))
+}
+
+/// POST /api/chat/notifications/{id}/mark_read/
+pub async fn mark_notification_read(
+    pool: web::Data<PgPool>,
+    path: web::Path<i32>,
+) -> HttpResponse {
+    let notification_id = path.into_inner();
+    match sqlx::query_as::<_, Notification>(
+        "UPDATE notifications SET is_read = true WHERE id = $1 RETURNING *",
+    )
+    .bind(notification_id)
+    .fetch_optional(pool.get_ref())
+    .await
+    {
+        Ok(Some(notif)) => HttpResponse::Ok().json(notif),
+        Ok(None) => HttpResponse::NotFound().json(serde_json::json!({"detail": "Not found."})),
+        Err(e) => {
+            tracing::error!("Failed to mark notification as read: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({"error": "Database error"}))
+        }
+    }
+}
+
 /// GET /api/chat/notifications/?user=...
 #[utoipa::path(
     get,
