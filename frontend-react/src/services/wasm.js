@@ -341,7 +341,7 @@ export function aggregateProcurementStats(procurements) {
 export function batchProcessMessages(messages, currentUserId) {
   if (wasmReady && Array.isArray(messages) && messages.length > 0) {
     try {
-      return JSON.parse(wasmModule.batch_process_messages(JSON.stringify(messages), currentUserId || 0));
+      return JSON.parse(wasmModule.batch_process_messages(JSON.stringify(messages), BigInt(currentUserId || 0)));
     } catch (err) {
       console.warn('[WASM] batch_process_messages failed, using JS fallback:', err.message);
     }

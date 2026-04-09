@@ -31,11 +31,13 @@ use handlers::websocket::WsState;
         handlers::users::get_user_balance,
         handlers::users::update_user_balance,
         handlers::users::get_user_role,
+        handlers::users::search_users,
         handlers::users::set_session_state,
         handlers::users::clear_session_state,
         handlers::procurements::list_procurements,
         handlers::procurements::create_procurement,
         handlers::procurements::get_procurement,
+        handlers::procurements::get_user_procurements,
         handlers::procurements::join_procurement,
         handlers::procurements::leave_procurement,
         handlers::procurements::list_categories,
@@ -159,6 +161,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/users/by_email/", web::get().to(handlers::users::get_user_by_email))
             .route("/api/users/by_phone/", web::get().to(handlers::users::get_user_by_phone))
             .route("/api/users/check_exists/", web::get().to(handlers::users::check_user_exists))
+            .route("/api/users/search/", web::get().to(handlers::users::search_users))
             .route("/api/users/sessions/set_state/", web::post().to(handlers::users::set_session_state))
             .route("/api/users/sessions/clear_state/", web::post().to(handlers::users::clear_session_state))
             .route("/api/users/{id}/", web::get().to(handlers::users::get_user))
@@ -172,13 +175,16 @@ async fn main() -> std::io::Result<()> {
             .route("/api/procurements/", web::get().to(handlers::procurements::list_procurements))
             .route("/api/procurements/", web::post().to(handlers::procurements::create_procurement))
             .route("/api/procurements/categories/", web::get().to(handlers::procurements::list_categories))
+            .route("/api/procurements/user/{user_id}/", web::get().to(handlers::procurements::get_user_procurements))
             .route("/api/procurements/{id}/", web::get().to(handlers::procurements::get_procurement))
             .route("/api/procurements/{id}/join/", web::post().to(handlers::procurements::join_procurement))
             .route("/api/procurements/{id}/leave/", web::post().to(handlers::procurements::leave_procurement))
             // Chat endpoints
             .route("/api/chat/messages/", web::get().to(handlers::chat::list_messages))
             .route("/api/chat/messages/", web::post().to(handlers::chat::create_message))
+            .route("/api/chat/messages/mark_read/", web::post().to(handlers::chat::mark_messages_read))
             .route("/api/chat/notifications/", web::get().to(handlers::chat::list_notifications))
+            .route("/api/chat/notifications/{id}/mark_read/", web::post().to(handlers::chat::mark_notification_read))
             // Payment endpoints
             .route("/api/payments/", web::post().to(handlers::payments::create_payment))
             .route("/api/payments/{id}/status/", web::get().to(handlers::payments::get_payment_status))

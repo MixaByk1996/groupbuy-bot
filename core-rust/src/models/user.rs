@@ -19,6 +19,7 @@ pub struct User {
     pub language_code: String,
     pub is_active: bool,
     pub is_verified: bool,
+    pub is_banned: bool,
     pub selfie_file_id: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -126,6 +127,11 @@ pub struct EmailQuery {
 #[derive(Debug, Deserialize)]
 pub struct PhoneQuery {
     pub phone: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SearchQuery {
+    pub q: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

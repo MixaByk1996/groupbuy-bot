@@ -72,8 +72,8 @@ pub async fn create_user(pool: web::Data<PgPool>, body: web::Json<CreateUser>) -
     };
 
     match sqlx::query_as::<_, User>(
-        r#"INSERT INTO users (platform, platform_user_id, username, first_name, last_name, phone, email, role, language_code, selfie_file_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        r#"INSERT INTO users (platform, platform_user_id, username, first_name, last_name, phone, email, role, language_code, selfie_file_id, is_banned)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false)
            RETURNING *"#,
     )
     .bind(&platform)
@@ -563,6 +563,53 @@ pub async fn get_user_role(pool: web::Data<PgPool>, path: web::Path<i32>) -> Htt
         Ok(None) => HttpResponse::NotFound().json(serde_json::json!({"detail": "Not found."})),
         Err(e) => {
             tracing::error!("Failed to fetch user role: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({"error": "Database error"}))
+        }
+    }
+}
+
+/// GET /api/users/search/?q=...
+#[utoipa::path(
+    get,
+    path = "/api/users/search/",
+    tag = "users",
+    params(("q" = String, Query, description = "Search query (name, username, email, phone)")),
+    responses(
+        (status = 200, description = "Search results", body = Vec<UserResponse>),
+        (status = 400, description = "Missing query parameter")
+    )
+)]
+pub async fn search_users(
+    pool: web::Data<PgPool>,
+    query: web::Query<SearchQuery>,
+) -> HttpResponse {
+    let q = match &query.q {
+        Some(q) if !q.trim().is_empty() => format!("%{}%", q.trim().to_lowercase()),
+        _ => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"error": "q (search query) is required"}))
+        }
+    };
+
+    match sqlx::query_as::<_, User>(
+        r#"SELECT * FROM users
+           WHERE LOWER(first_name) LIKE $1
+              OR LOWER(last_name) LIKE $1
+              OR LOWER(username) LIKE $1
+              OR LOWER(email) LIKE $1
+              OR phone LIKE $1
+           LIMIT 20"#,
+    )
+    .bind(&q)
+    .fetch_all(pool.get_ref())
+    .await
+    {
+        Ok(users) => {
+            let responses: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
+            HttpResponse::Ok().json(responses)
+        }
+        Err(e) => {
+            tracing::error!("Failed to search users: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({"error": "Database error"}))
         }
     }
