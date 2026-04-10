@@ -30,6 +30,7 @@ volumes:
   clickhouse_data:
   minio_data:
   elasticsearch_data:
+  chat_media_data:
 
 services:
   # ─────────────────────────────────────────────
@@ -480,6 +481,12 @@ services:
       CENTRIFUGO_URL: http://centrifugo:8000
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-centrifugo_api_key}
       CLICKHOUSE_DSN: clickhouse://clickhouse_user:clickhouse_password@clickhouse:9000/chat_history
+      # Media files are stored on a named volume so they survive container restarts.
+      # MEDIA_BASE_URL must use the public gateway path so browser clients can fetch media.
+      MEDIA_STORAGE_DIR: /app/media
+      MEDIA_BASE_URL: ${MEDIA_BASE_URL:-/api/v1/chat/media}
+    volumes:
+      - chat_media_data:/app/media
     depends_on:
       postgres-chat:
         condition: service_healthy
@@ -493,7 +500,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 32M
+          # Raised from 32 M: chat service handles multipart media uploads (up to 25 MB per
+          # file × 5 files = 125 MB worst-case in-flight), so 32 M was too low and caused
+          # OOM-kills that manifested as 404 / 502 responses on the upload endpoint.
+          memory: 256M
 
   notification-service:
     build:

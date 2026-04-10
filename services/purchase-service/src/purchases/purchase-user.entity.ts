@@ -12,6 +12,8 @@ import { Purchase } from './purchases.entity';
 export enum PurchaseUserRole {
   OWNER = 'owner',
   EDITOR = 'editor',
+  /** A regular user invited by a participant or organizer to join the purchase. */
+  PARTICIPANT = 'participant',
 }
 
 @Entity('purchase_users')

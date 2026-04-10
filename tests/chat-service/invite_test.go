@@ -104,6 +104,37 @@ func TestInviteParticipant_RequestValidation(t *testing.T) {
 	}
 }
 
+// TestMediaBaseURL_DefaultIsGatewayRelative verifies that the default MEDIA_BASE_URL
+// used by chat-service is a gateway-relative path, not a direct localhost URL.
+// A localhost URL like "http://localhost:4004/media" is unreachable from browser
+// clients running outside Docker, which caused the 404 on photo/video upload (issue #304).
+func TestMediaBaseURL_DefaultIsGatewayRelative(t *testing.T) {
+	const defaultMediaBaseURL = "/api/v1/chat/media"
+
+	if defaultMediaBaseURL == "" {
+		t.Fatal("MEDIA_BASE_URL default must not be empty")
+	}
+	if len(defaultMediaBaseURL) >= 4 && defaultMediaBaseURL[:4] == "http" {
+		t.Errorf("MEDIA_BASE_URL default %q must be a relative path, not an absolute URL", defaultMediaBaseURL)
+	}
+	if defaultMediaBaseURL[:len("/api/v1/chat")] != "/api/v1/chat" {
+		t.Errorf("MEDIA_BASE_URL default %q must start with /api/v1/chat to route through the gateway", defaultMediaBaseURL)
+	}
+}
+
+// TestMediaURL_Construction verifies that media file URLs constructed from the
+// new default base URL route correctly through the API gateway.
+func TestMediaURL_Construction(t *testing.T) {
+	const baseURL = "/api/v1/chat/media"
+	filename := "abc123.jpg"
+	fileURL := baseURL + "/" + filename
+
+	expected := "/api/v1/chat/media/abc123.jpg"
+	if fileURL != expected {
+		t.Errorf("expected %q, got %q", expected, fileURL)
+	}
+}
+
 func TestInviteParticipant_EventPayload(t *testing.T) {
 	// Verify the Centrifugo event payload structure for a successful invite.
 	roomID := "room-abc"

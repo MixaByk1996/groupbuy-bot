@@ -211,6 +211,60 @@ export class PurchasesService {
     return this.purchaseUserRepo.find({ where: { purchaseId } });
   }
 
+  /**
+   * Invite a user to participate in a purchase.
+   * Any existing participant (including the organizer) can invite another user.
+   * The invited user is recorded as a PARTICIPANT so the notification service can
+   * alert them and they can confirm their participation.
+   */
+  async inviteParticipant(
+    purchaseId: string,
+    requesterId: string,
+    targetUserId: string,
+  ): Promise<PurchaseUser> {
+    const purchase = await this.findById(purchaseId);
+
+    if (purchase.status !== PurchaseStatus.ACTIVE) {
+      throw new BadRequestException('Can only invite participants to active purchases');
+    }
+    if (targetUserId === requesterId) {
+      throw new BadRequestException('Cannot invite yourself');
+    }
+
+    // Only the organizer or an existing participant/editor can send invites
+    const isOrganizer = purchase.organizerId === requesterId;
+    const requesterEntry = isOrganizer
+      ? null
+      : await this.purchaseUserRepo.findOne({ where: { purchaseId, userId: requesterId } });
+    if (!isOrganizer && !requesterEntry) {
+      throw new ForbiddenException('Only existing participants or the organizer can invite users');
+    }
+
+    // Idempotent: return existing record if already invited/participating
+    const existing = await this.purchaseUserRepo.findOne({
+      where: { purchaseId, userId: targetUserId },
+    });
+    if (existing) {
+      return existing;
+    }
+
+    const pu = this.purchaseUserRepo.create({
+      purchaseId,
+      userId: targetUserId,
+      role: PurchaseUserRole.PARTICIPANT,
+      invitedBy: requesterId,
+    });
+    const saved = await this.purchaseUserRepo.save(pu);
+
+    await this.kafkaProducer.send('purchase.participant.invited', {
+      purchaseId,
+      userId: targetUserId,
+      invitedBy: requesterId,
+    });
+
+    return saved;
+  }
+
   async update(
     id: string,
     requesterId: string,
