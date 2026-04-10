@@ -130,6 +130,17 @@ export class ReviewsController {
     };
   }
 
+  /**
+   * Returns the user's average rating broken down by role (buyer, organizer, supplier).
+   * This lets the UI display separate star ratings for each context a user operates in.
+   * GET /reputation/:userId/ratings-by-role
+   */
+  @Get('reputation/:userId/ratings-by-role')
+  async getRatingsByRole(@Param('userId', ParseUUIDPipe) userId: string) {
+    const ratings = await this.reviewsService.getRatingsByRole(userId);
+    return { success: true, data: ratings };
+  }
+
   @Get('health')
   health() {
     return { status: 'ok', service: 'reputation-service' };

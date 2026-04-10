@@ -112,11 +112,15 @@ export class ReviewsService {
 
     const total = await queryBuilder.getCount();
 
-    const avgResult = await this.reviewRepository
+    // Compute average only over the filtered set (respect role filter when provided)
+    const avgQueryBuilder = this.reviewRepository
       .createQueryBuilder('review')
       .select('AVG(review.rating)', 'avg')
-      .where('review.target_id = :userId', { userId })
-      .getRawOne();
+      .where('review.target_id = :userId', { userId });
+    if (options?.role) {
+      avgQueryBuilder.andWhere('review.role = :role', { role: options.role });
+    }
+    const avgResult = await avgQueryBuilder.getRawOne();
 
     const averageRating = avgResult?.avg ? parseFloat(parseFloat(avgResult.avg).toFixed(2)) : 0;
 
@@ -128,6 +132,39 @@ export class ReviewsService {
     const reviews = await queryBuilder.getMany();
 
     return { reviews, total, averageRating };
+  }
+
+  /**
+   * Returns a breakdown of a user's reputation per role (buyer, organizer, supplier).
+   * Each entry contains the average rating and total reviews for that specific role.
+   */
+  async getRatingsByRole(userId: string): Promise<{
+    buyer: { averageRating: number; totalReviews: number };
+    organizer: { averageRating: number; totalReviews: number };
+    supplier: { averageRating: number; totalReviews: number };
+  }> {
+    const rows: Array<{ role: string; avg: string; count: string }> = await this.reviewRepository
+      .createQueryBuilder('review')
+      .select('review.role', 'role')
+      .addSelect('AVG(review.rating)', 'avg')
+      .addSelect('COUNT(*)', 'count')
+      .where('review.target_id = :userId', { userId })
+      .groupBy('review.role')
+      .getRawMany();
+
+    const build = (role: string) => {
+      const row = rows.find((r) => r.role === role);
+      return {
+        averageRating: row?.avg ? parseFloat(parseFloat(row.avg).toFixed(2)) : 0,
+        totalReviews: row?.count ? parseInt(row.count, 10) : 0,
+      };
+    };
+
+    return {
+      buyer: build(ReviewRole.BUYER),
+      organizer: build(ReviewRole.ORGANIZER),
+      supplier: build(ReviewRole.SUPPLIER),
+    };
   }
 
   async getReputationScore(userId: string): Promise<ReputationScore> {

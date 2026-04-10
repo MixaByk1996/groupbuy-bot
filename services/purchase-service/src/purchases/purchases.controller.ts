@@ -19,6 +19,7 @@ import {
   IsOptional,
   IsNumber,
   IsDateString,
+  IsUUID,
   MinLength,
   Min,
 } from 'class-validator';
@@ -26,6 +27,12 @@ import { PurchasesService, CreatePurchaseDto as CreatePurchaseInput } from './pu
 
 class AddEditorDto {
   @IsString()
+  user_id: string;
+}
+
+class InviteParticipantDto {
+  /** UUID of the user being invited to join the purchase. */
+  @IsUUID()
   user_id: string;
 }
 
@@ -176,5 +183,22 @@ export class PurchasesController {
     const requesterId = getUserId(headers);
     await this.purchasesService.removeEditor(id, requesterId, userId);
     return { success: true };
+  }
+
+  /**
+   * Invite a user to participate in a purchase.
+   * Any existing participant or the organizer can invite another user.
+   * The invited user will appear as a pending participant until they confirm.
+   */
+  @Post(':id/invite')
+  @HttpCode(HttpStatus.OK)
+  async inviteParticipant(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InviteParticipantDto,
+    @Headers() headers: Record<string, string>,
+  ) {
+    const requesterId = getUserId(headers);
+    const result = await this.purchasesService.inviteParticipant(id, requesterId, dto.user_id);
+    return { success: true, data: result };
   }
 }

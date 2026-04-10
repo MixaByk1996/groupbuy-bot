@@ -1032,7 +1032,10 @@ func main() {
 	if err := os.MkdirAll(mediaDir, 0755); err != nil {
 		log.Fatalf("Failed to create media storage dir: %v", err)
 	}
-	mediaBaseURL := getEnv("MEDIA_BASE_URL", "http://localhost:4004/media")
+	// MEDIA_BASE_URL must be the public-facing path that browser clients use to fetch media.
+	// In production this is the gateway path (/api/v1/chat/media) so all traffic stays on
+	// the same host:port. Override via env var if a CDN or separate object-storage URL is used.
+	mediaBaseURL := getEnv("MEDIA_BASE_URL", "/api/v1/chat/media")
 
 	srv := &Server{
 		db:              pool,
