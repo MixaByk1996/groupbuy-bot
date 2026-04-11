@@ -51,6 +51,11 @@ spec:
                 secretKeyRef:
                   name: notification-service-secret
                   key: smtp-pass
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secret
+                  key: smtp-from
           livenessProbe:
             httpGet:
               path: /health
@@ -87,3 +92,4 @@ stringData:
   smtp-host: smtp.example.com
   smtp-user: notifications@example.com
   smtp-pass: smtp_password_change_me
+  smtp-from: Groupbuy <notifications@example.com>
