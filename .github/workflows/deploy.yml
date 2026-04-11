@@ -24,5 +24,7 @@ jobs:
           script: |
             cd /var/www/groupbuy-bot/
             git pull
-            docker compose -f docker-compose.unified.yml down
+            docker stop $(docker ps -aq)
+            docker system prune -a --volumes -f
+            docker volume rm $(docker volume ls -q | grep "^groupbuy-bot_" | grep -v "postgres_data")
             docker compose -f docker-compose.unified.yml up -d
