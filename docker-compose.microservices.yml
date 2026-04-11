@@ -524,6 +524,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-notifications@example.com}
       SMTP_PASS: ${SMTP_PASS:-smtp_password}
+      SMTP_FROM: ${SMTP_FROM:-Groupbuy <notifications@example.com>}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY:-fcm_server_key_placeholder}
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
       WHATSAPP_API_URL: "${WHATSAPP_API_URL:-}"
