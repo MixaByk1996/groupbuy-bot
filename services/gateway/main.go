@@ -301,10 +301,10 @@ func (g *Gateway) buildRouter() http.Handler {
 		http.StripPrefix("/api/v1/payments", g.proxyTo("payment")),
 	)
 	protected.PathPrefix("/escrow").Handler(
-		http.StripPrefix("/api/v1/escrow", g.proxyTo("payment")),
+		http.StripPrefix("/api/v1", g.proxyTo("payment")),
 	)
 	protected.PathPrefix("/commission").Handler(
-		http.StripPrefix("/api/v1/commission", g.proxyTo("payment")),
+		http.StripPrefix("/api/v1", g.proxyTo("payment")),
 	)
 	protected.PathPrefix("/chat").Handler(
 		http.StripPrefix("/api/v1/chat", g.proxyTo("chat")),
@@ -313,13 +313,13 @@ func (g *Gateway) buildRouter() http.Handler {
 		http.StripPrefix("/api/v1/search", g.proxyTo("search")),
 	)
 	protected.PathPrefix("/reputation").Handler(
-		http.StripPrefix("/api/v1/reputation", g.proxyTo("reputation")),
+		http.StripPrefix("/api/v1", g.proxyTo("reputation")),
 	)
 	protected.PathPrefix("/reviews").Handler(
-		http.StripPrefix("/api/v1/reviews", g.proxyTo("reputation")),
+		http.StripPrefix("/api/v1", g.proxyTo("reputation")),
 	)
 	protected.PathPrefix("/complaints").Handler(
-		http.StripPrefix("/api/v1/complaints", g.proxyTo("reputation")),
+		http.StripPrefix("/api/v1", g.proxyTo("reputation")),
 	)
 	protected.PathPrefix("/analytics").Handler(
 		http.StripPrefix("/api/v1/analytics", g.proxyTo("analytics")),

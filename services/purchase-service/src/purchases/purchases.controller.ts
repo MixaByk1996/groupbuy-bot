@@ -86,7 +86,7 @@ function getUserId(headers: Record<string, string>): string {
   return userId;
 }
 
-@Controller('purchases')
+@Controller()
 export class PurchasesController {
   constructor(private readonly purchasesService: PurchasesService) {}
 

@@ -89,7 +89,7 @@ function getUserId(headers: Record<string, string>): string {
   return userId;
 }
 
-@Controller('voting')
+@Controller()
 export class VotingController {
   constructor(private readonly votingService: VotingService) {}
 
