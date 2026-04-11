@@ -33,6 +33,17 @@
 
 ---
 
+> **Формат ответов микросервисов**: все NestJS и FastAPI сервисы возвращают ответы в едином формате:
+> ```json
+> { "success": true, "data": { ... } }
+> ```
+> при ошибках:
+> ```json
+> { "success": false, "error": "описание ошибки" }
+> ```
+
+---
+
 ## Обзор архитектуры
 
 Система состоит из двух уровней:
@@ -2196,22 +2207,24 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 ### Auth Service (порт 4001)
 
-Базовый URL: `http://auth-service:4001` (или через Gateway: `/auth/...`)
+Базовый URL: `http://auth-service:4001` (или через Gateway: `/api/v1/auth/...`)
 
 Технология: NestJS
+
+Аутентификация построена на основе **OTP (одноразовый код)**, отправляемого на email пользователя. Пароли не используются.
 
 ---
 
 #### `POST /register`
 
-Регистрация нового пользователя.
+**Шаг 1**: Начало регистрации — проверяет уникальность телефона и email, отправляет OTP-код на email.
 
 **Поля запроса**:
 
 | Поле | Тип | Обязательное | Описание |
 |---|---|---|---|
+| `phone` | string | **да** | Номер телефона (формат: `+79001234567`) |
 | `email` | string (email) | **да** | Email пользователя |
-| `password` | string | **да** | Пароль |
 | `firstName` | string | нет | Имя |
 | `lastName` | string | нет | Фамилия |
 | `role` | string | нет | Роль: `buyer`, `organizer`, `supplier` |
@@ -2219,11 +2232,42 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 **Пример запроса**:
 ```json
 {
+  "phone": "+79001234567",
   "email": "user@example.com",
-  "password": "securePass123",
   "firstName": "Иван",
   "lastName": "Петров",
   "role": "buyer"
+}
+```
+
+**Ответ** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "message": "OTP sent to email"
+  }
+}
+```
+
+---
+
+#### `POST /register/confirm`
+
+**Шаг 2**: Подтверждение регистрации — проверяет OTP и возвращает JWT-токены.
+
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `phone` | string | **да** | Номер телефона |
+| `otp` | string (4–8 символов) | **да** | OTP-код из письма |
+
+**Пример запроса**:
+```json
+{
+  "phone": "+79001234567",
+  "otp": "123456"
 }
 ```
 
@@ -2243,13 +2287,49 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 #### `POST /login`
 
-Авторизация.
+**Шаг 1**: Начало входа по номеру телефона — отправляет OTP-код на зарегистрированный email пользователя.
 
-**Тело запроса**:
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `phone` | string | **да** | Номер телефона пользователя |
+
+**Пример запроса**:
 ```json
 {
-  "email": "user@example.com",
-  "password": "securePass123"
+  "phone": "+79001234567"
+}
+```
+
+**Ответ** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "message": "OTP sent to email"
+  }
+}
+```
+
+---
+
+#### `POST /login/confirm`
+
+**Шаг 2**: Подтверждение входа — проверяет OTP и возвращает JWT-токены (или `tempToken` при включённой 2FA).
+
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `phone` | string | **да** | Номер телефона |
+| `otp` | string (4–8 символов) | **да** | OTP-код из письма |
+
+**Пример запроса**:
+```json
+{
+  "phone": "+79001234567",
+  "otp": "654321"
 }
 ```
 
@@ -2265,7 +2345,15 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 }
 ```
 
-Если включена 2FA — возвращается `tempToken` вместо основных токенов.
+Если у пользователя включена 2FA — возвращается `tempToken` вместо основных токенов:
+```json
+{
+  "success": true,
+  "data": {
+    "tempToken": "temp-jwt-token...",
+    "requires2FA": true
+  }
+}
 
 ---
 
@@ -2375,17 +2463,24 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 #### `POST /2fa/login`
 
-Войти с 2FA-кодом.
+Войти с 2FA-кодом (используется если при `POST /login/confirm` был возвращён `tempToken`).
 
-**Тело запроса**:
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `tempToken` | string | **да** | Временный токен из ответа `POST /login/confirm` |
+| `code` | string | **да** | Код из приложения 2FA или резервный код |
+
+**Пример запроса**:
 ```json
 {
-  "tempToken": "temp-token-from-login-response",
+  "tempToken": "temp-jwt-token-from-login-confirm",
   "code": "123456"
 }
 ```
 
-**Ответ**: пара токенов (как при `/login`)
+**Ответ** (`200 OK`): полная пара токенов (как при `/login/confirm` без 2FA)
 
 ---
 
@@ -2431,7 +2526,7 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 ### Purchase Service (порт 4002)
 
-Базовый URL: `http://purchase-service:4002` (или через Gateway: `/purchases/...`)
+Базовый URL: `http://purchase-service:4002` (или через Gateway: `/api/v1/purchases/...` и `/api/v1/voting/...`)
 
 Технология: NestJS
 
@@ -2582,6 +2677,39 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 ---
 
+#### `POST /purchases/{id}/invite`
+
+Пригласить пользователя участвовать в закупке. Любой участник или организатор может пригласить другого пользователя. Приглашённый появится как ожидающий участник до подтверждения.
+
+**Заголовки**: `x-user-id: <userId>`
+
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `user_id` | string (uuid) | **да** | UUID приглашаемого пользователя |
+
+**Пример запроса**:
+```json
+{
+  "user_id": "uuid-invited-user"
+}
+```
+
+**Ответ** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "purchaseId": "uuid-purchase",
+    "invitedUserId": "uuid-invited-user",
+    "status": "PENDING"
+  }
+}
+```
+
+---
+
 #### `POST /voting/sessions`
 
 Создать сессию голосования.
@@ -2703,6 +2831,59 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
         "percent": 66.7
       }
     ]
+  }
+}
+```
+
+---
+
+#### `PATCH /voting/sessions/{sessionId}/close`
+
+Закрыть сессию голосования досрочно.
+
+**Заголовки**: `x-user-id: <userId>`
+
+**Ответ** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-session",
+    "status": "CLOSED",
+    "closedAt": "2024-02-01T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### `POST /voting/sessions/{sessionId}/resolve-tie`
+
+Разрешить ничью в голосовании — выбрать победителя вручную.
+
+**Заголовки**: `x-user-id: <userId>`
+
+**Поля запроса**:
+
+| Поле | Тип | Обязательное | Описание |
+|---|---|---|---|
+| `candidateId` | string (uuid) | **да** | ID кандидата-победителя |
+
+**Пример запроса**:
+```json
+{
+  "candidateId": "uuid-winning-candidate"
+}
+```
+
+**Ответ** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-session",
+    "status": "CLOSED",
+    "winnerId": "uuid-winning-candidate"
   }
 }
 ```
@@ -3065,7 +3246,7 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 
 ### Reputation Service (порт 4008)
 
-Базовый URL: `http://reputation-service:4008` (или через Gateway: `/reputation/...`)
+Базовый URL: `http://reputation-service:4008` (или через Gateway: `/api/v1/reputation/...`, `/api/v1/reviews/...`, `/api/v1/complaints/...`)
 
 Технология: NestJS
 
@@ -3081,12 +3262,12 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
 |---|---|---|---|
 | `reviewerId` | string (uuid) | **да** | ID автора отзыва |
 | `targetId` | string (uuid) | **да** | ID оцениваемого пользователя |
-| `role` | string | **да** | Роль рецензента: `buyer`, `organizer` |
+| `purchaseId` | string (uuid) | **да** | ID закупки |
+| `role` | string | **да** | Роль рецензента: `buyer`, `organizer`, `supplier` |
 | `rating` | integer (1–5) | **да** | Общая оценка |
-| `purchaseId` | string (uuid) | нет | ID закупки |
+| `expiresAt` | datetime | **да** | Время истечения отзыва (ISO 8601) |
 | `categories` | object | нет | Оценки по категориям: `reliability`, `speed`, `quality`, `timeliness` (каждая 1–5) |
 | `comment` | string | нет | Комментарий |
-| `expiresAt` | datetime | нет | Время истечения отзыва (ISO 8601) |
 
 **Пример запроса**:
 ```json
@@ -3164,6 +3345,33 @@ GET /api/admin/analytics/?date_from=2024-01-01&date_to=2024-01-31&period=week
     "limits": {
       "maxPurchaseAmount": 500000,
       "canBeOrganizer": true
+    }
+  }
+}
+```
+
+---
+
+#### `GET /reputation/{userId}/ratings-by-role`
+
+Средний рейтинг пользователя в разбивке по ролям (покупатель, организатор, поставщик). Позволяет отображать отдельные звёздные рейтинги для каждого контекста, в котором работает пользователь.
+
+**Ответ**:
+```json
+{
+  "success": true,
+  "data": {
+    "buyer": {
+      "averageRating": 4.8,
+      "totalReviews": 12
+    },
+    "organizer": {
+      "averageRating": 4.5,
+      "totalReviews": 8
+    },
+    "supplier": {
+      "averageRating": null,
+      "totalReviews": 0
     }
   }
 }
@@ -3567,17 +3775,25 @@ Gateway — это обратный прокси (Go), который:
 
 **Таблица маршрутизации**:
 
-| Префикс пути | Целевой сервис |
-|---|---|
-| `/auth/*` | Auth Service (4001) |
-| `/purchases/*` | Purchase Service (4002) |
-| `/payment/*` | Payment Service (4003) |
-| `/chat/*` | Chat Service |
-| `/search/*` | Search Service (4007) |
-| `/reputation/*` | Reputation Service (4008) |
-| `/analytics/*` | Analytics Service (4006) |
-| `/notifications/*` | Notification Service (4005) |
+| Префикс пути (Gateway) | Целевой сервис | Примечание |
+|---|---|---|
+| `/api/v1/auth/*` | Auth Service (4001) | Публичный (без JWT) |
+| `/api/v1/purchases/*` | Purchase Service (4002) | Требует JWT |
+| `/api/v1/voting/*` | Purchase Service (4002) | Требует JWT |
+| `/api/v1/payments/*` | Payment Service (4003) | Требует JWT |
+| `/api/v1/escrow/*` | Payment Service (4003) | Требует JWT |
+| `/api/v1/commission/*` | Payment Service (4003) | Требует JWT |
+| `/api/v1/chat/*` | Chat Service (4004) | Требует JWT |
+| `/api/v1/search/*` | Search Service (4007) | Требует JWT |
+| `/api/v1/reputation/*` | Reputation Service (4008) | Требует JWT |
+| `/api/v1/reviews/*` | Reputation Service (4008) | Требует JWT |
+| `/api/v1/complaints/*` | Reputation Service (4008) | Требует JWT |
+| `/api/v1/analytics/*` | Analytics Service (4006) | Требует JWT |
+| `/ws/*` | Chat Service (4004) | WebSocket (Centrifugo) |
+| `/webhooks/*` | Payment Service (4003) | Без JWT (проверка подписи) |
 
 ---
 
-*Документ сгенерирован на основе исходного кода проекта. При обновлении API рекомендуется актуализировать этот файл.*
+---
+
+*Документ актуализирован на основе исходного кода проекта. При обновлении API рекомендуется своевременно обновлять этот файл.*
