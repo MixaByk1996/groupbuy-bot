@@ -414,7 +414,9 @@ export class AuthService {
 
       const req = lib.request(options, (res) => {
         console.log(`[OTP] Email dispatch status for ${email}: ${res.statusCode}`);
-        resolve();
+        // Drain the response body so the socket is released and the timeout does not fire.
+        res.resume();
+        res.on('end', () => resolve());
       });
 
       req.on('error', (err) => {
