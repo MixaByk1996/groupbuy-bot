@@ -50,6 +50,9 @@ export const useStore = create((set, get) => ({
     } catch (error) {
       set({ error: error.message, isLoading: false });
       localStorage.removeItem('userId');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      set({ loginModalOpen: true });
     }
   },
 
