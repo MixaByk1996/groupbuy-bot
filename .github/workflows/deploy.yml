@@ -24,4 +24,5 @@ jobs:
           script: |
             cd /var/www/groupbuy-bot/
             git pull
+            docker compose -f docker-compose.unified.yml down
             docker compose -f docker-compose.unified.yml up -d
