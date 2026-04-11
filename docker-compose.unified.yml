@@ -455,6 +455,8 @@ services:
         condition: service_healthy
       frontend-react:
         condition: service_healthy
+      gateway:
+        condition: service_started
     networks:
       - groupbuy-network
     deploy:
