@@ -27,7 +27,7 @@ export class AddPhoneColumn1000000000004 implements MigrationInterface {
       DO $$ BEGIN
         ALTER TABLE users ADD CONSTRAINT users_phone_unique UNIQUE (phone);
       EXCEPTION
-        WHEN duplicate_table THEN NULL;
+        WHEN duplicate_object THEN NULL;
       END $$
     `);
 
