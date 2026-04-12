@@ -41,7 +41,7 @@ function CreateProcurementModal() {
     try {
       await createProcurement({
         ...formData,
-        organizer: user?.id,
+        organizer: user?.coreId || user?.id,
         target_amount: parseFloat(formData.target_amount) || 0,
         commission_percent: parseFloat(formData.commission_percent) || 1,
         min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : null,

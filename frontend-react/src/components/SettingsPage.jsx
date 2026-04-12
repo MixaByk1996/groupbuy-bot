@@ -116,9 +116,9 @@ function SettingsPage() {
   const handleRoleSwitch = async (newRole) => {
     if (newRole === user.role) { setRoleSwitchOpen(false); return; }
     try {
-      await api.updateUser(user.id, { role: newRole });
-      const updated = await api.getUser(user.id);
-      useStore.setState({ user: updated });
+      await api.updateUser(user.coreId || user.id, { role: newRole });
+      const updated = await api.getUser(user.coreId || user.id);
+      useStore.setState({ user: { ...updated, id: user.id, coreId: updated.id } });
       setRoleSwitchOpen(false);
       addToast(`Роль изменена на: ${getRoleText(newRole)}`, 'success');
     } catch {

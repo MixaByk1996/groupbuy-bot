@@ -19,7 +19,7 @@ function DepositModal() {
     setIsLoading(true);
     try {
       await api.createPayment({
-        user_id: user.id,
+        user_id: user.coreId || user.id,
         amount: depositAmount,
         payment_type: 'deposit',
         payment_method: paymentMethod,
@@ -29,7 +29,7 @@ function DepositModal() {
       setAmount('');
       // Reload user to update balance (in real app, this would wait for payment confirmation)
       if (user) {
-        loadUser(user.id);
+        loadUser(user.coreId || user.id);
       }
     } catch (error) {
       addToast('Ошибка создания платежа', 'error');

@@ -8,7 +8,13 @@ function restoreUserFromToken() {
     const userId = localStorage.getItem('userId');
     if (!token || !userId) return null;
     const payload = JSON.parse(atob(token.split('.')[1]));
-    return { id: payload.sub || userId, email: payload.email, role: payload.role };
+    const coreId = localStorage.getItem('coreUserId');
+    return {
+      id: payload.sub || userId,
+      email: payload.email,
+      role: payload.role,
+      coreId: coreId ? parseInt(coreId, 10) : null,
+    };
   } catch (_) {
     return null;
   }
@@ -52,7 +58,17 @@ export const useStore = create((set, get) => ({
   loadUser: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      const user = await api.getUser(userId);
+      const coreUser = await api.getUser(userId);
+      // Preserve auth-service identity (UUID id) while enriching with core user fields
+      const currentUser = get().user;
+      const user = {
+        ...coreUser,
+        id: currentUser?.id || userId,
+        coreId: coreUser.id,
+      };
+      if (coreUser.id) {
+        localStorage.setItem('coreUserId', String(coreUser.id));
+      }
       set({ user, isLoading: false });
       // Fetch a fresh WebSocket JWT token so the WS server can authenticate.
       // Fire-and-forget: a failure here must not block the login flow.
@@ -63,6 +79,7 @@ export const useStore = create((set, get) => ({
       set({ error: error.message, isLoading: false });
       if (error instanceof ApiError && error.status === 401) {
         localStorage.removeItem('userId');
+        localStorage.removeItem('coreUserId');
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('wsToken');
@@ -96,9 +113,16 @@ export const useStore = create((set, get) => ({
       if (tokens.accessToken) localStorage.setItem('authToken', tokens.accessToken);
       if (tokens.refreshToken) localStorage.setItem('refreshToken', tokens.refreshToken);
       const payload = JSON.parse(atob(tokens.accessToken.split('.')[1]));
-      const user = { id: payload.sub, email: payload.email, role: payload.role };
+      const user = { id: payload.sub, email: payload.email, role: payload.role, coreId: null };
       localStorage.setItem('userId', user.id);
       set({ user, isLoading: false, loginModalOpen: false, otpPending: null });
+      // Fetch core user ID (integer) needed for core API calls — fire-and-forget
+      api.getUserByEmail(payload.email).then((coreUser) => {
+        if (coreUser && coreUser.id) {
+          localStorage.setItem('coreUserId', String(coreUser.id));
+          set((state) => ({ user: state.user ? { ...state.user, coreId: coreUser.id } : state.user }));
+        }
+      }).catch(() => {});
       get().loadProcurements();
       return user;
     } catch (error) {
@@ -152,9 +176,16 @@ export const useStore = create((set, get) => ({
       if (tokens.accessToken) localStorage.setItem('authToken', tokens.accessToken);
       if (tokens.refreshToken) localStorage.setItem('refreshToken', tokens.refreshToken);
       const payload = JSON.parse(atob(tokens.accessToken.split('.')[1]));
-      const user = { id: payload.sub, email: payload.email, role: payload.role };
+      const user = { id: payload.sub, email: payload.email, role: payload.role, coreId: null };
       localStorage.setItem('userId', user.id);
       set({ user, isLoading: false, loginModalOpen: false, otpPending: null });
+      // Fetch core user ID (integer) needed for core API calls — fire-and-forget
+      api.getUserByEmail(payload.email).then((coreUser) => {
+        if (coreUser && coreUser.id) {
+          localStorage.setItem('coreUserId', String(coreUser.id));
+          set((state) => ({ user: state.user ? { ...state.user, coreId: coreUser.id } : state.user }));
+        }
+      }).catch(() => {});
       get().loadProcurements();
       return user;
     } catch (error) {
@@ -171,6 +202,7 @@ export const useStore = create((set, get) => ({
       // Best-effort: clear local state regardless of server response
     }
     localStorage.removeItem('userId');
+    localStorage.removeItem('coreUserId');
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('wsToken');
@@ -248,7 +280,7 @@ export const useStore = create((set, get) => ({
     }
     try {
       await api.joinProcurement(procurementId, {
-        user_id: user.id,
+        user_id: user.coreId || user.id,
         amount,
         quantity: quantity || 1,
         notes: notes || '',
@@ -265,7 +297,7 @@ export const useStore = create((set, get) => ({
     const { user } = get();
     if (!user) return;
     try {
-      await api.leaveProcurement(procurementId, { user_id: user.id });
+      await api.leaveProcurement(procurementId, { user_id: user.coreId || user.id });
       get().addToast('Вы вышли из закупки', 'success');
       get().loadProcurements();
     } catch (error) {
@@ -310,7 +342,7 @@ export const useStore = create((set, get) => ({
     if (!user) return;
     try {
       await api.castVote(procurementId, {
-        voter_id: user.id,
+        voter_id: user.coreId || user.id,
         supplier_id: supplierId,
         comment,
       });
@@ -399,7 +431,7 @@ export const useStore = create((set, get) => ({
     const optimisticMsg = {
       id: tempId,
       procurement: currentChat,
-      user: user.id,
+      user: user.coreId || user.id,
       sender_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
       text,
       message_type: resolvedType,
@@ -412,7 +444,7 @@ export const useStore = create((set, get) => ({
     try {
       const message = await api.sendMessage({
         procurement: currentChat,
-        user: user.id,
+        user: user.coreId || user.id,
         text,
         message_type: resolvedType,
         media_url: mediaUrl || undefined,
