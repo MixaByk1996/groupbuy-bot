@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import ChatList from './components/ChatList';
 import ChatView from './components/ChatView';
 import Cabinet from './components/Cabinet';
+import SettingsPage from './components/SettingsPage';
 import UnderDevelopmentPage from './components/UnderDevelopmentPage';
 import LoginModal from './components/LoginModal';
 import ProcurementModal from './components/ProcurementModal';
@@ -69,6 +70,7 @@ function MainApp() {
           <Route path="/" element={<Cabinet />} />
           <Route path="/chat/:procurementId" element={<ChatView />} />
           <Route path="/cabinet" element={<Cabinet />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/in-development" element={<UnderDevelopmentPage />} />
           <Route path="/banned" element={<BannedPage />} />
         </Routes>
