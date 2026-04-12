@@ -72,7 +72,8 @@ export const useStore = create((set, get) => ({
       set({ user, isLoading: false });
       // Fetch a fresh WebSocket JWT token so the WS server can authenticate.
       // Fire-and-forget: a failure here must not block the login flow.
-      api.getWsToken(userId).then(({ token }) => {
+      // Use the integer core user ID since the ws_token endpoint uses Django pk.
+      api.getWsToken(coreUser.id).then(({ token }) => {
         if (token) localStorage.setItem('wsToken', token);
       }).catch(() => {});
     } catch (error) {

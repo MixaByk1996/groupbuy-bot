@@ -1036,6 +1036,7 @@ input, textarea, select {
   max-height: 90vh;
   overflow-y: auto;
   scrollbar-width: none;
+  -ms-overflow-style: none;
   box-shadow: var(--tg-shadow-medium);
   transform: scale(0.9);
   transition: transform var(--tg-transition);
@@ -1043,6 +1044,7 @@ input, textarea, select {
 }
 
 .modal::-webkit-scrollbar {
+  width: 0;
   display: none;
 }
 
