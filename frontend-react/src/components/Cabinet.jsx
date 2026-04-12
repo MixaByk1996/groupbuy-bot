@@ -368,11 +368,7 @@ function CabinetChatSection() {
 
       {/* Right: active chat pane */}
       <div className="lk-chat-view-col">
-        {!currentChat || !activeProcurement ? (
-          <div className="lk-chat-empty">
-            <p>Выберите чат для просмотра</p>
-          </div>
-        ) : (
+        {currentChat && activeProcurement && (
           <>
             {/* Chat header */}
             <div className="lk-chat-view-header">
