@@ -145,6 +145,10 @@ export class AuthService {
       await this.usersService.setTwoFactorRequired(user.id, true);
     }
 
+    // Sync newly registered user to the Rust core API so that
+    // /api/users/by_email/ can resolve the integer coreId for the frontend.
+    await this.syncUserToCoreApi(user);
+
     return this.generateTokens(user);
   }
 
@@ -451,6 +455,77 @@ export class AuthService {
   private generateNumericOtp(length: number): string {
     const digits = crypto.randomInt(Math.pow(10, length - 1), Math.pow(10, length));
     return digits.toString();
+  }
+
+  /**
+   * Syncs a newly registered auth-service user to the Rust core API so that
+   * GET /api/users/by_email/ can resolve the integer coreId for the frontend.
+   * Non-fatal: logs on failure but does not block the registration response.
+   */
+  private async syncUserToCoreApi(user: User): Promise<void> {
+    const coreApiUrl = this.configService.get<string>(
+      'CORE_API_URL',
+      'http://core:8000',
+    );
+
+    const body = JSON.stringify({
+      platform: 'websocket',
+      platform_user_id: user.id,
+      username: user.email,
+      first_name: user.firstName || '',
+      last_name: user.lastName || '',
+      phone: user.phone || '',
+      email: user.email,
+      role: user.role || 'buyer',
+      language_code: 'ru',
+    });
+
+    const url = new URL('/api/users/', coreApiUrl);
+    const isHttps = url.protocol === 'https:';
+    const lib = isHttps ? https : http;
+
+    return new Promise((resolve) => {
+      const options = {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+        timeout: 5000,
+      };
+
+      const req = lib.request(options, (res) => {
+        res.resume();
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`[CoreSync] Created core user for ${user.email} (status ${res.statusCode})`);
+          } else if (res.statusCode === 400 || res.statusCode === 409) {
+            // 400 is returned by the Rust core on duplicate platform_user_id; treat as already exists
+            console.log(`[CoreSync] Core user for ${user.email} already exists (${res.statusCode})`);
+          } else {
+            console.error(`[CoreSync] Unexpected status ${res.statusCode} creating core user for ${user.email}`);
+          }
+          resolve();
+        });
+      });
+
+      req.on('error', (err) => {
+        console.error(`[CoreSync] Failed to create core user for ${user.email}: ${err.message}`);
+        resolve();
+      });
+
+      req.on('timeout', () => {
+        console.error(`[CoreSync] Timeout creating core user for ${user.email}`);
+        req.destroy();
+        resolve();
+      });
+
+      req.write(body);
+      req.end();
+    });
   }
 
   /**
