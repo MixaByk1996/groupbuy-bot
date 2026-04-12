@@ -405,6 +405,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: 7d
       BCRYPT_ROUNDS: 10
       NOTIFICATION_SERVICE_URL: http://notification-service:4005
+      CORE_API_URL: ${CORE_API_URL:-http://core:8000}
     depends_on:
       postgres-auth:
         condition: service_healthy
