@@ -40,6 +40,9 @@ function CreateProcurementModal() {
     try {
       await createProcurement({
         ...formData,
+        // Convert empty string to null for nullable FK/numeric fields so the
+        // backend serializer does not reject them with a validation error.
+        category: formData.category ? parseInt(formData.category, 10) : null,
         target_amount: parseFloat(formData.target_amount) || 0,
         commission_percent: parseFloat(formData.commission_percent) || 1,
         min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : null,

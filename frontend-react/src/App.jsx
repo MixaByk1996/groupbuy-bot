@@ -38,10 +38,14 @@ function MainApp() {
     setTheme(initialTheme);
     document.documentElement.setAttribute('data-theme', initialTheme);
 
-    // Try to load user from storage
+    // Try to load user from storage.
+    // Prefer the integer coreUserId for the core API call; fall back to UUID
+    // only if coreUserId has not yet been resolved (first login before the
+    // async getUserByEmail call finished).
     const userId = localStorage.getItem('userId');
+    const coreUserId = localStorage.getItem('coreUserId');
     if (userId) {
-      loadUser(userId);
+      loadUser(coreUserId || userId);
     }
   }, [loadUser, setTheme]);
 

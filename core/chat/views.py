@@ -144,6 +144,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
         if not user_id:
             return Notification.objects.none()
 
+        # Validate that user_id is an integer (Django User pk).
+        # A UUID or any non-integer value would raise ValueError inside the ORM
+        # and be converted to a 400 response by DRF, so we guard against it here.
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return Notification.objects.none()
+
         queryset = Notification.objects.filter(user_id=user_id)
 
         unread_only = self.request.query_params.get('unread_only')

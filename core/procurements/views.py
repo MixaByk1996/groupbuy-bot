@@ -230,6 +230,13 @@ class ProcurementViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='user/(?P<user_id>[^/.]+)')
     def user_procurements(self, request, user_id=None):
         """Get procurements for a specific user"""
+        # Validate that user_id is an integer (Django User pk).
+        # A UUID or any non-integer value would cause a ValueError in the ORM.
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return Response({'organized': [], 'participating': []})
+
         # Get organized procurements
         organized = self.get_queryset().filter(organizer_id=user_id)
 
