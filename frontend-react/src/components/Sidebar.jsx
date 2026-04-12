@@ -15,8 +15,6 @@ import {
   SunIcon,
   MoonIcon,
   SearchIcon,
-  LogoutIcon,
-  SettingsIcon,
 } from './Icons';
 import BurgerMenu from './BurgerMenu';
 
@@ -42,15 +40,14 @@ function Sidebar() {
     toggleTheme,
     toggleBurgerMenu,
     setCurrentChat,
-    logout,
     sidebarTab,
     setSidebarTab,
   } = useStore();
 
-  // Sync tab with route (but don't override settings tab)
   useEffect(() => {
-    if (sidebarTab === 'settings') return;
-    if (location.pathname.includes('/cabinet')) {
+    if (location.pathname.includes('/settings')) {
+      setSidebarTab('settings');
+    } else if (location.pathname.includes('/cabinet')) {
       setSidebarTab('cabinet');
     } else if (!location.pathname.includes('/chat')) {
       setSidebarTab('chats');
@@ -75,6 +72,7 @@ function Sidebar() {
     setSidebarTab(tab);
     if (tab === 'chats') navigate('/');
     else if (tab === 'cabinet') { navigate('/cabinet'); closeSidebar(); }
+    else if (tab === 'settings') { navigate('/settings'); closeSidebar(); }
   };
 
   return (
@@ -176,54 +174,7 @@ function Sidebar() {
 
       {sidebarTab === 'cabinet' && <div className="sidebar-spacer" />}
 
-      {sidebarTab === 'settings' && (
-        <div className="sidebar-settings">
-          {user && (
-            <div className="sidebar-settings-profile">
-              <div
-                className="sidebar-footer-avatar"
-                style={{ backgroundColor: getAvatarColor(user.first_name || '') }}
-              >
-                {getInitials(user.first_name, user.last_name)}
-              </div>
-              <div className="sidebar-footer-info">
-                <span className="sidebar-footer-name">{user.first_name} {user.last_name || ''}</span>
-                <span className="sidebar-settings-sub">{user.phone || user.email || ''}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="sidebar-settings-section">
-            <div className="sidebar-settings-item">
-              <span className="sidebar-settings-label">Тема</span>
-              <div className="lk-theme-switcher">
-                {[['light', 'Светлая'], ['dark', 'Тёмная']].map(([t, label]) => (
-                  <button
-                    key={t}
-                    className={`lk-theme-btn${theme === t ? ' active' : ''}`}
-                    onClick={() => {
-                      document.documentElement.setAttribute('data-theme', t);
-                      localStorage.setItem('theme', t);
-                      if (theme !== t) toggleTheme();
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {user && (
-            <div className="sidebar-settings-section">
-              <button className="sidebar-settings-logout" onClick={logout}>
-                <LogoutIcon />
-                <span>Выйти из аккаунта</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {sidebarTab === 'settings' && <div className="sidebar-spacer" />}
 
       {user && sidebarTab !== 'settings' && (
         <div
