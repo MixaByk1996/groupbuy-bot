@@ -244,8 +244,8 @@ function CabinetChatSection() {
 
   const processedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
-    return batchProcessMessages(messages, user?.id || 0);
-  }, [messages, user?.id]);
+    return batchProcessMessages(messages, user?.coreId || user?.id || 0);
+  }, [messages, user?.coreId, user?.id]);
 
   return (
     <div className="lk-chat-panel">
@@ -489,10 +489,11 @@ function Cabinet() {
     if (!user) return;
     setProcurementsLoading(true);
     try {
+      const coreId = user.coreId || user.id;
       const [balance, procurements, notifications] = await Promise.all([
-        api.getUserBalance(user.id).catch(() => null),
-        api.getUserProcurements(user.id).catch(() => null),
-        api.getNotifications(user.id).catch(() => null),
+        api.getUserBalance(coreId).catch(() => null),
+        api.getUserProcurements(coreId).catch(() => null),
+        api.getNotifications(coreId).catch(() => null),
       ]);
 
       if (notifications) {
@@ -522,8 +523,8 @@ function Cabinet() {
       let participating = [];
       if (procurements) {
         if (Array.isArray(procurements)) {
-          organized = procurements.filter((p) => p.organizer === user.id);
-          participating = procurements.filter((p) => p.organizer !== user.id);
+          organized = procurements.filter((p) => p.organizer === (user.coreId || user.id));
+          participating = procurements.filter((p) => p.organizer !== (user.coreId || user.id));
         } else {
           organized = procurements.organized || [];
           participating = procurements.participating || [];
@@ -577,7 +578,7 @@ function Cabinet() {
 
   const handleSaveCompanyCard = async (data) => {
     try {
-      await api.updateUser(user.id, {
+      await api.updateUser(user.coreId || user.id, {
         first_name: data.company_name,
         phone: data.phone,
         email: data.email,
@@ -610,7 +611,7 @@ function Cabinet() {
 
   const handleProcurementStatusChange = async (procurementId, newStatus) => {
     try {
-      await api.updateProcurementStatus(procurementId, newStatus, user.id);
+      await api.updateProcurementStatus(procurementId, newStatus, user.coreId || user.id);
       setMyProcurements((prev) => {
         if (!prev) return prev;
         const updateList = (list) =>
@@ -915,7 +916,7 @@ function Cabinet() {
     if (!addParticipantSelected || !addParticipantAmount || !addParticipantProcurement) return;
     try {
       await api.addParticipant(addParticipantProcurement.id, {
-        organizer_id: user.id,
+        organizer_id: user.coreId || user.id,
         user_id: addParticipantSelected.id,
         quantity: parseFloat(addParticipantQuantity) || 1,
         amount: parseFloat(addParticipantAmount),
@@ -937,7 +938,7 @@ function Cabinet() {
     if (!inviteEmail.trim() || !inviteProcurement) return;
     setInviteLoading(true);
     try {
-      await api.inviteUser(inviteProcurement.id, inviteEmail.trim(), user.id);
+      await api.inviteUser(inviteProcurement.id, inviteEmail.trim(), user.coreId || user.id);
       addToast(`Приглашение отправлено на ${inviteEmail.trim()}`, 'success');
       setInviteOpen(false);
     } catch (err) {
@@ -1119,7 +1120,7 @@ function Cabinet() {
                 {p.status === 'completed' ? '✓ Успешно' : '✗ Отменена'} · {formatCurrency(p.current_amount || 0)}
               </div>
             </div>
-            {user.role === 'organizer' && p.organizer === user.id && (
+            {user.role === 'organizer' && p.organizer === (user.coreId || user.id) && (
               <select
                 value={p.status}
                 onChange={(e) => handleProcurementStatusChange(p.id, e.target.value)}
@@ -1242,17 +1243,17 @@ function Cabinet() {
                     { value: 'cancelled', label: 'Отменена' },
                   ].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-                {p.organizer === user?.id && p.status === 'active' && (
+                {p.organizer === (user?.coreId || user?.id) && p.status === 'active' && (
                   <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '2px 8px' }} onClick={() => handleOpenAddParticipant(p)}>
                     + Добавить участника
                   </button>
                 )}
-                {p.organizer === user?.id && p.status === 'active' && (
+                {p.organizer === (user?.coreId || user?.id) && p.status === 'active' && (
                   <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '2px 8px' }} onClick={() => handleOpenInvite(p)}>
                     Пригласить
                   </button>
                 )}
-                {p.organizer === user?.id && (
+                {p.organizer === (user?.coreId || user?.id) && (
                   <button className="lk-btn-invite-accept" style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--tg-bg-secondary)', color: 'var(--tg-primary)', border: '1px solid var(--tg-primary)' }} onClick={() => handleOpenEditors(p)}>
                     👥 Редакторы
                   </button>

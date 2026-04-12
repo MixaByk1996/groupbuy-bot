@@ -34,7 +34,7 @@ function ProcurementModal() {
   const [participants, setParticipants] = useState([]);
   const [isLoadingTab, setIsLoadingTab] = useState(false);
 
-  const isOrganizer = user && selectedProcurement && selectedProcurement.organizer === user.id;
+  const isOrganizer = user && selectedProcurement && selectedProcurement.organizer === (user.coreId || user.id);
   const canVote = selectedProcurement && ['active', 'stopped'].includes(selectedProcurement.status);
   const canJoin = selectedProcurement && selectedProcurement.status === 'active';
   const canStop = isOrganizer && selectedProcurement && selectedProcurement.status === 'active';

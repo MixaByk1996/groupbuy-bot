@@ -26,7 +26,7 @@ function WithdrawModal({ isOpen, onClose }) {
     setIsLoading(true);
     try {
       await api.createPayment({
-        user_id: user.id,
+        user_id: user.coreId || user.id,
         amount: withdrawAmount,
         payment_type: 'withdrawal',
         description: `Вывод на: ${requisites}`,
@@ -35,7 +35,7 @@ function WithdrawModal({ isOpen, onClose }) {
       onClose();
       setAmount('');
       setRequisites('');
-      if (user) loadUser(user.id);
+      if (user) loadUser(user.coreId || user.id);
     } catch (error) {
       addToast('Ошибка при создании заявки на вывод', 'error');
     } finally {

@@ -39,7 +39,7 @@ function ChatVotingPanel({ procurementId, user, participants }) {
 
   const totalParticipants = participants?.length || 0;
   const allClosed = totalParticipants > 0 && closeRequests.length >= totalParticipants;
-  const userAlreadyClosedVote = user && closeRequests.includes(user.id);
+  const userAlreadyClosedVote = user && closeRequests.includes(user.coreId || user.id);
 
   // 429 countdown effect
   useEffect(() => {
@@ -71,7 +71,7 @@ function ChatVotingPanel({ procurementId, user, participants }) {
         setVoteResults(results);
         // Find current user's vote
         if (user && results.user_votes) {
-          const myVote = results.user_votes[user.id];
+          const myVote = results.user_votes[user.coreId || user.id];
           if (myVote) {
             setUserVote(myVote);
             setSelectedSupplierId(String(myVote.supplier_id));
@@ -135,7 +135,7 @@ function ChatVotingPanel({ procurementId, user, participants }) {
 
     try {
       await api.castChatVote(procurementId, {
-        voter_id: user.id,
+        voter_id: user.coreId || user.id,
         supplier_id: supplierId,
         comment: voteComment,
       });
@@ -172,15 +172,15 @@ function ChatVotingPanel({ procurementId, user, participants }) {
   const handleCloseVote = async () => {
     if (userAlreadyClosedVote) return;
     try {
-      await api.closeChatVote(procurementId, user.id);
-      setCloseRequests((prev) => [...prev, user.id]);
+      await api.closeChatVote(procurementId, user.coreId || user.id);
+      setCloseRequests((prev) => [...prev, user.coreId || user.id]);
       addToast('Вы подтвердили закрытие голосования', 'success');
       if (closeRequests.length + 1 >= totalParticipants) {
         addToast('Голосование закрыто всеми участниками', 'success');
       }
     } catch {
       // Optimistic update even on API error (endpoint may not exist yet)
-      setCloseRequests((prev) => [...prev, user.id]);
+      setCloseRequests((prev) => [...prev, user.coreId || user.id]);
       addToast('Вы подтвердили закрытие голосования', 'success');
     }
   };
@@ -194,7 +194,7 @@ function ChatVotingPanel({ procurementId, user, participants }) {
     // Add supplier as a suggestion in comments
     try {
       await api.castChatVote(procurementId, {
-        voter_id: user.id,
+        voter_id: user.coreId || user.id,
         supplier_id: null,
         comment: `Предлагаю поставщика: ${name}`,
       });
@@ -584,8 +584,8 @@ function ChatView() {
   // This computes date dividers, formats text, escapes HTML, and detects own messages
   const processedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
-    return batchProcessMessages(messages, user?.id || 0);
-  }, [messages, user?.id]);
+    return batchProcessMessages(messages, user?.coreId || user?.id || 0);
+  }, [messages, user?.coreId, user?.id]);
 
   const renderMessages = () => {
     if (processedMessages.length === 0) {
