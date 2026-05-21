@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Счёт SO-0001</title>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; margin: 32px; color: #222; }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  .meta { color: #555; margin-bottom: 24px; }
+  .meta div { margin: 2px 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; vertical-align: top; }
+  th { background: #f3f6fb; text-align: left; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tfoot td { font-weight: bold; background: #fafafa; }
+  .partner { margin-bottom: 18px; }
+  .partner b { color: #111; }
+  @media print { body { margin: 12mm; } }
+</style>
+</head>
+<body>
+  <h1>Счёт SO-0001</h1>
+  <div class="meta">
+    <div>Дата: 2026-02-13</div>
+    <div>Валюта: RUB</div>
+  </div>
+  <div class="partner">
+    <div><b>Контрагент:</b> ООО Ромашка</div>
+    <div><b>ИНН:</b> 7701234567</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Наименование</th>
+        <th class="num">Кол-во</th>
+        <th class="num">Цена</th>
+        <th class="num">Скидка, %</th>
+        <th class="num">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>TSH-001</td><td>Футболка белая</td><td class="num">2</td><td class="num">350</td><td class="num">0</td><td class="num">700.00</td></tr>
+      <tr><td>BAG-001</td><td>Сумка тканевая</td><td class="num">1</td><td class="num">900</td><td class="num">10</td><td class="num">810.00</td></tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" class="num">Итого</td>
+        <td class="num">1510.00 RUB</td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

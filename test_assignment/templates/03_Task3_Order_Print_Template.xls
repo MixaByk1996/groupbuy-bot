@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="Header">
+      <Font ss:Bold="1"/>
+      <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+    </Style>
+  </Styles>
+
+  <Worksheet ss:Name="ORDER_INPUT">
+    <Table>
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">order_no</Data></Cell>
+        <Cell><Data ss:Type="String">date</Data></Cell>
+        <Cell><Data ss:Type="String">customer_name</Data></Cell>
+        <Cell><Data ss:Type="String">customer_inn</Data></Cell>
+        <Cell><Data ss:Type="String">currency</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">SO-0001</Data></Cell>
+        <Cell><Data ss:Type="String">2026-02-13</Data></Cell>
+        <Cell><Data ss:Type="String">ООО Ромашка</Data></Cell>
+        <Cell><Data ss:Type="String">7701234567</Data></Cell>
+        <Cell><Data ss:Type="String">RUB</Data></Cell>
+      </Row>
+
+      <Row><Cell><Data ss:Type="String"></Data></Cell></Row>
+
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">sku</Data></Cell>
+        <Cell><Data ss:Type="String">name</Data></Cell>
+        <Cell><Data ss:Type="String">qty</Data></Cell>
+        <Cell><Data ss:Type="String">price</Data></Cell>
+        <Cell><Data ss:Type="String">discount_pct</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">TSH-001</Data></Cell>
+        <Cell><Data ss:Type="String">Футболка белая</Data></Cell>
+        <Cell><Data ss:Type="Number">2</Data></Cell>
+        <Cell><Data ss:Type="Number">350</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">BAG-001</Data></Cell>
+        <Cell><Data ss:Type="String">Сумка тканевая</Data></Cell>
+        <Cell><Data ss:Type="Number">1</Data></Cell>
+        <Cell><Data ss:Type="Number">900</Data></Cell>
+        <Cell><Data ss:Type="Number">10</Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <Worksheet ss:Name="OUTPUT">
+    <Table>
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">partner_inn</Data></Cell>
+        <Cell><Data ss:Type="String">partner_name</Data></Cell>
+      </Row>
+      <Row><Cell><Data ss:Type="String"></Data></Cell><Cell><Data ss:Type="String"></Data></Cell></Row>
+
+      <Row><Cell><Data ss:Type="String"></Data></Cell></Row>
+
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">sale_order_no</Data></Cell>
+        <Cell><Data ss:Type="String">sale_order_date</Data></Cell>
+        <Cell><Data ss:Type="String">currency</Data></Cell>
+        <Cell><Data ss:Type="String">partner_inn</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+      </Row>
+
+      <Row><Cell><Data ss:Type="String"></Data></Cell></Row>
+
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">order_no</Data></Cell>
+        <Cell><Data ss:Type="String">sku</Data></Cell>
+        <Cell><Data ss:Type="String">name</Data></Cell>
+        <Cell><Data ss:Type="String">qty</Data></Cell>
+        <Cell><Data ss:Type="String">price</Data></Cell>
+        <Cell><Data ss:Type="String">discount_pct</Data></Cell>
+        <Cell><Data ss:Type="String">line_total</Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <Worksheet ss:Name="HINTS">
+    <Table>
+      <Row ss:StyleID="Header">
+        <Cell><Data ss:Type="String">Подсказки</Data></Cell>
+      </Row>
+      <Row><Cell><Data ss:Type="String">Формула line_total: qty * price * (1 - discount_pct/100).</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="String">Итог = сумма line_total по всем строкам.</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="String">invoice.html должен содержать: номер/дата/контрагент+ИНН, строки, итог.</Data></Cell></Row>
+    </Table>
+  </Worksheet>
+
+</Workbook>

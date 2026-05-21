@@ -1,0 +1,205 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>Natallia Bartosh</Author>
+  <LastAuthor>Natallia Bartosh</LastAuthor>
+  <Created>2026-03-02T20:07:25Z</Created>
+  <Version>16.00</Version>
+ </DocumentProperties>
+ <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">
+  <AllowPNG/>
+ </OfficeDocumentSettings>
+ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+  <WindowHeight>7610</WindowHeight>
+  <WindowWidth>19200</WindowWidth>
+  <WindowTopX>32767</WindowTopX>
+  <WindowTopY>32767</WindowTopY>
+  <ActiveSheet>4</ActiveSheet>
+  <ProtectStructure>False</ProtectStructure>
+  <ProtectWindows>False</ProtectWindows>
+ </ExcelWorkbook>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:CharSet="204" x:Family="Swiss" ss:Size="11"
+    ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="s62">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders/>
+   <Font ss:FontName="Arial" x:CharSet="204" x:Family="Swiss" ss:Bold="1"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="INPUT_products">
+  <Table ss:ExpandedColumnCount="5" ss:ExpandedRowCount="5" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Column ss:Index="3" ss:AutoFitWidth="0" ss:Width="118.5"/>
+   <Column ss:AutoFitWidth="0" ss:Width="91.5"/>
+   <Column ss:AutoFitWidth="0" ss:Width="120.5"/>
+   <Row ss:AutoFitHeight="0" ss:Height="26" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">id</Data></Cell>
+    <Cell><Data ss:Type="String">sku</Data></Cell>
+    <Cell><Data ss:Type="String">name</Data></Cell>
+    <Cell><Data ss:Type="String">color</Data></Cell>
+    <Cell><Data ss:Type="String">photo_url</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="Number">1</Data></Cell>
+    <Cell><Data ss:Type="String">TSH-001</Data></Cell>
+    <Cell><Data ss:Type="String">Футболка белая</Data></Cell>
+    <Cell><Data ss:Type="String">white</Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="Number">2</Data></Cell>
+    <Cell><Data ss:Type="String">TSH001</Data></Cell>
+    <Cell><Data ss:Type="String">Футболка белая </Data></Cell>
+    <Cell><Data ss:Type="String">белый</Data></Cell>
+    <Cell><Data ss:Type="String">https://img/1.jpg</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="Number">3</Data></Cell>
+    <Cell><Data ss:Type="String">BAG-001</Data></Cell>
+    <Cell><Data ss:Type="String">Сумка тканевая</Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+    <Cell><Data ss:Type="String">https://img/2.jpg</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="Number">4</Data></Cell>
+    <Cell><Data ss:Type="String">BAG-001</Data></Cell>
+    <Cell><Data ss:Type="String">Сумка тканевая (нов.)</Data></Cell>
+    <Cell><Data ss:Type="String">black</Data></Cell>
+    <Cell><Data ss:Type="String"></Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Unsynced/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="MASTER">
+  <Table ss:ExpandedColumnCount="5" ss:ExpandedRowCount="1" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Row ss:AutoFitHeight="0" ss:Height="26" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">sku_norm</Data></Cell>
+    <Cell><Data ss:Type="String">name_norm</Data></Cell>
+    <Cell><Data ss:Type="String">color_norm</Data></Cell>
+    <Cell><Data ss:Type="String">photo_url_best</Data></Cell>
+    <Cell><Data ss:Type="String">issues_flag</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Unsynced/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="ISSUES">
+  <Table ss:ExpandedColumnCount="4" ss:ExpandedRowCount="1" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Row ss:AutoFitHeight="0" ss:Height="26" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">issue_type</Data></Cell>
+    <Cell><Data ss:Type="String">sku_norm</Data></Cell>
+    <Cell><Data ss:Type="String">source_row_ids</Data></Cell>
+    <Cell><Data ss:Type="String">details</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Unsynced/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="COLOR_MAP">
+  <Table ss:ExpandedColumnCount="2" ss:ExpandedRowCount="8" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Row ss:AutoFitHeight="0" ss:Height="26" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">source_value</Data></Cell>
+    <Cell><Data ss:Type="String">color_norm</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">white</Data></Cell>
+    <Cell><Data ss:Type="String">WHITE</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">White</Data></Cell>
+    <Cell><Data ss:Type="String">WHITE</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">белый</Data></Cell>
+    <Cell><Data ss:Type="String">WHITE</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">black</Data></Cell>
+    <Cell><Data ss:Type="String">BLACK</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">Black</Data></Cell>
+    <Cell><Data ss:Type="String">BLACK</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">черный</Data></Cell>
+    <Cell><Data ss:Type="String">BLACK</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">чёрный</Data></Cell>
+    <Cell><Data ss:Type="String">BLACK</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Unsynced/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="RULES">
+  <Table ss:ExpandedColumnCount="2" ss:ExpandedRowCount="6" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Column ss:AutoFitWidth="0" ss:Width="106"/>
+   <Column ss:AutoFitWidth="0" ss:Width="204.5"/>
+   <Row ss:AutoFitHeight="0" ss:Height="26" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">Правило</Data></Cell>
+    <Cell><Data ss:Type="String">Описание</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">sku_norm</Data></Cell>
+    <Cell><Data ss:Type="String">UPPER + убрать дефисы/пробелы</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">name_norm</Data></Cell>
+    <Cell><Data ss:Type="String">trim + убрать двойные пробелы</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">color_norm</Data></Cell>
+    <Cell><Data ss:Type="String">по COLOR_MAP</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">photo_url_best</Data></Cell>
+    <Cell><Data ss:Type="String">выбрать непустое из дублей</Data></Cell>
+   </Row>
+   <Row ss:AutoFitHeight="0">
+    <Cell><Data ss:Type="String">issues_flag</Data></Cell>
+    <Cell><Data ss:Type="String">OK / DUPLICATE / MISSING_ATTR</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Unsynced/>
+   <Selected/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>
