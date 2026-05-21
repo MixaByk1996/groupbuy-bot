@@ -1,0 +1,142 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Version>16.00</Version>
+ </DocumentProperties>
+ <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">
+  <AllowPNG/>
+ </OfficeDocumentSettings>
+ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+  <WindowHeight>7610</WindowHeight>
+  <WindowWidth>19200</WindowWidth>
+  <WindowTopX>32767</WindowTopX>
+  <WindowTopY>32767</WindowTopY>
+  <ProtectStructure>False</ProtectStructure>
+  <ProtectWindows>False</ProtectWindows>
+ </ExcelWorkbook>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:CharSet="204" x:Family="Swiss" ss:Size="11"
+    ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="s62">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders/>
+   <Font ss:FontName="Arial" x:CharSet="204" x:Family="Swiss" ss:Bold="1"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="s63">
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:CharSet="204" x:Family="Swiss" ss:Size="11"
+    ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="SCHEMA">
+  <Table ss:ExpandedColumnCount="2" ss:ExpandedRowCount="4" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Row ss:Height="13" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">Таблица</Data></Cell>
+    <Cell><Data ss:Type="String">Поля</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">orders</Data></Cell>
+    <Cell><Data ss:Type="String">id, order_no, total_amount, currency, status</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">order_lines</Data></Cell>
+    <Cell><Data ss:Type="String">id, order_id, qty, price</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">payments</Data></Cell>
+    <Cell><Data ss:Type="String">id, order_id, amount, currency, status (paid/failed)</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Selected/>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="TASKS">
+  <Table ss:ExpandedColumnCount="3" ss:ExpandedRowCount="5" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Column ss:Index="2" ss:AutoFitWidth="0" ss:Width="114.5"/>
+   <Column ss:AutoFitWidth="0" ss:Width="199.5"/>
+   <Row ss:Height="52" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">#</Data></Cell>
+    <Cell><Data ss:Type="String">Проверка</Data></Cell>
+    <Cell><Data ss:Type="String">Что вывести минимум</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">1</Data></Cell>
+    <Cell><Data ss:Type="String">Заказы без строк</Data></Cell>
+    <Cell><Data ss:Type="String">order_no, order_id, status</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">2</Data></Cell>
+    <Cell><Data ss:Type="String">Расхождение суммы заказа vs сумма строк (delta &gt; 1)</Data></Cell>
+    <Cell><Data ss:Type="String">order_no, total_amount, lines_amount, delta</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">3</Data></Cell>
+    <Cell><Data ss:Type="String">Заказы paid, но paid_amount &lt; total_amount</Data></Cell>
+    <Cell><Data ss:Type="String">order_no, total_amount, paid_amount, unpaid_amount</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">4</Data></Cell>
+    <Cell><Data ss:Type="String">Валютное несоответствие (paid)</Data></Cell>
+    <Cell><Data ss:Type="String">order_no, order_currency, payment_currency, amount</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="ANSWERS">
+  <Table ss:ExpandedColumnCount="2" ss:ExpandedRowCount="5" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="14.5">
+   <Column ss:Index="2" ss:AutoFitWidth="0" ss:Width="116.5"/>
+   <Row ss:Height="39" ss:StyleID="s62">
+    <Cell><Data ss:Type="String">Блок</Data></Cell>
+    <Cell><Data ss:Type="String">SQL (PostgreSQL)</Data></Cell>
+   </Row>
+   <Row ss:Height="58">
+    <Cell ss:StyleID="s62"><Data ss:Type="String">#1 SQL</Data></Cell>
+    <Cell ss:StyleID="s63"><Data ss:Type="String">&#45;- Напишите запрос сюда</Data></Cell>
+   </Row>
+   <Row ss:Height="58">
+    <Cell ss:StyleID="s62"><Data ss:Type="String">#2 SQL</Data></Cell>
+    <Cell ss:StyleID="s63"><Data ss:Type="String">&#45;- Напишите запрос сюда</Data></Cell>
+   </Row>
+   <Row ss:Height="58">
+    <Cell ss:StyleID="s62"><Data ss:Type="String">#3 SQL</Data></Cell>
+    <Cell ss:StyleID="s63"><Data ss:Type="String">&#45;- Напишите запрос сюда</Data></Cell>
+   </Row>
+   <Row ss:Height="58">
+    <Cell ss:StyleID="s62"><Data ss:Type="String">#4 SQL</Data></Cell>
+    <Cell ss:StyleID="s63"><Data ss:Type="String">&#45;- Напишите запрос сюда</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>
